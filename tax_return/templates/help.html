@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help & FAQ - Tax Return Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .faq-item {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .faq-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+        
+        .faq-question {
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .faq-question:before {
+            content: '▶';
+            margin-right: 10px;
+            transition: transform 0.3s;
+        }
+        
+        .faq-item.open .faq-question:before {
+            transform: rotate(90deg);
+        }
+        
+        .faq-answer {
+            color: #666;
+            line-height: 1.8;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .faq-item.open .faq-answer {
+            max-height: 500px;
+        }
+        
+        .contact-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .contact-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.5em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❓ Help & FAQ</h1>
+            <p>Find answers to common questions about tax filing</p>
+        </div>
+        
+        <div class="content">
+            <div class="faq-list">
+                {% for faq in faqs %}
+                <div class="faq-item">
+                    <div class="faq-question">{{ faq.question }}</div>
+                    <div class="faq-answer">{{ faq.answer }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="contact-section">
+                <h3>Still have questions?</h3>
+                <p>Our support team is here to help you with any questions or issues.</p>
+                <p style="margin-top: 10px;">
+                    <a href="mailto:support@taxreturntooltool.com" class="btn">Contact Support</a>
+                </p>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                    <strong>Disclaimer:</strong> This tool provides general tax information. 
+                    For complex tax situations, please consult with a qualified tax professional or CPA.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="{{ url_for('index') }}" class="btn">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const item = question.closest('.faq-item');
+                item.classList.toggle('open');
+            });
+        });
+    </script>
+</body>
+</html>

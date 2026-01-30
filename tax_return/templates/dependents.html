@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dependents - Tax Return Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px; }
+        .dependent-item { padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn { padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        .buttons { display: flex; gap: 10px; margin-top: 30px; }
+        .buttons button { flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👨‍👩‍👧 Dependents</h1>
+            <p>Add information for {{ filer_name }}'s dependents</p>
+        </div>
+        <div class="content">
+            <div id="dependentList"></div>
+            <button class="btn" style="width: 100%; margin-bottom: 20px;" onclick="addDependentForm()">+ Add Dependent</button>
+            
+            <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 20px; border-radius: 5px;">
+                <strong>ℹ️ Info:</strong> A dependent must live with you for at least 6 months and be under age 26 (or a qualifying relative).
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" style="background: #6c757d;" onclick="history.back()">← Back</button>
+                <button class="btn" onclick="nextStep()">Next: Calculate Taxes →</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function addDependentForm() {
+            const html = `
+                <div class="dependent-item">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" placeholder="First name">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" placeholder="Last name">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>SSN</label>
+                        <input type="text" placeholder="XXX-XX-XXXX">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date">
+                        </div>
+                        <div class="form-group">
+                            <label>Relationship</label>
+                            <select>
+                                <option>Child</option>
+                                <option>Parent</option>
+                                <option>Sibling</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Months Lived with You (0-12)</label>
+                        <input type="number" min="0" max="12" placeholder="12">
+                    </div>
+                    <button style="background: #dc3545; width: 100%;" onclick="this.parentElement.remove()">Remove</button>
+                </div>
+            `;
+            document.getElementById('dependentList').insertAdjacentHTML('beforeend', html);
+        }
+        function nextStep() { window.location.href = '{{ url_for("calculate_tax") }}'; }
+    </script>
+</body>
+</html>

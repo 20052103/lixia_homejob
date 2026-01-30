@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculate Taxes - Tax Return Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px; }
+        .calculation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .calc-box { padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; }
+        .calc-box h4 { color: #333; margin-bottom: 10px; font-size: 1em; }
+        .calc-amount { font-size: 1.8em; color: #667eea; font-weight: bold; margin-top: 10px; }
+        .summary-box { padding: 20px; background: #d4edda; border: 2px solid #28a745; border-radius: 8px; margin-bottom: 20px; }
+        .summary-box h3 { color: #155724; margin-bottom: 10px; }
+        .summary-amount { font-size: 2.5em; color: #28a745; font-weight: bold; }
+        .btn { padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        .buttons { display: flex; gap: 10px; margin-top: 30px; }
+        .buttons button { flex: 1; padding: 12px; }
+        .info-note { padding: 15px; background: #e7f3ff; border-left: 4px solid #0066cc; margin-bottom: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧮 Tax Calculation</h1>
+            <p>Your estimated tax results</p>
+        </div>
+        <div class="content">
+            <div class="info-note">
+                <strong>📊 Summary:</strong> Below is your tax calculation based on the information provided.
+            </div>
+            
+            <div class="calculation-grid">
+                <div class="calc-box">
+                    <h4>Gross Income</h4>
+                    <div class="calc-amount">${{ "{:,.2f}".format(result.get('gross_income', 0)) if result.get('gross_income') else '0.00' }}</div>
+                </div>
+                <div class="calc-box">
+                    <h4>Total Deductions</h4>
+                    <div class="calc-amount">${{ "{:,.2f}".format(result.get('total_deductions', 0)) if result.get('total_deductions') else '0.00' }}</div>
+                </div>
+                <div class="calc-box">
+                    <h4>Taxable Income</h4>
+                    <div class="calc-amount">${{ "{:,.2f}".format(result.get('taxable_income', 0)) if result.get('taxable_income') else '0.00' }}</div>
+                </div>
+                <div class="calc-box">
+                    <h4>Tax Credits</h4>
+                    <div class="calc-amount">${{ "{:,.2f}".format(result.get('total_credits', 0)) if result.get('total_credits') else '0.00' }}</div>
+                </div>
+            </div>
+            
+            <div class="summary-box">
+                <h3>📈 Estimated Federal Income Tax</h3>
+                <div class="summary-amount">$0.00</div>
+                <p style="margin-top: 10px; color: #155724;">Note: This is an estimate. Actual tax may vary based on additional factors.</p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="color: #333; margin-bottom: 15px;">Detailed Breakdown</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 10px; color: #666;">Gross Income</td>
+                        <td style="padding: 10px; text-align: right; color: #333; font-weight: bold;">${{ "{:,.2f}".format(result.get('gross_income', 0)) if result.get('gross_income') else '0.00' }}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 10px; color: #666;">Less: Deductions</td>
+                        <td style="padding: 10px; text-align: right; color: #333; font-weight: bold;">-${{ "{:,.2f}".format(result.get('total_deductions', 0)) if result.get('total_deductions') else '0.00' }}</td>
+                    </tr>
+                    <tr style="border-bottom: 2px solid #333; background: #f0f2ff;">
+                        <td style="padding: 10px; color: #333; font-weight: bold;">Taxable Income</td>
+                        <td style="padding: 10px; text-align: right; color: #333; font-weight: bold;">${{ "{:,.2f}".format(result.get('taxable_income', 0)) if result.get('taxable_income') else '0.00' }}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 10px; color: #666;">Federal Income Tax</td>
+                        <td style="padding: 10px; text-align: right; color: #dc3545; font-weight: bold;">$0.00</td>
+                    </tr>
+                    <tr style="background: #d4edda;">
+                        <td style="padding: 10px; color: #155724; font-weight: bold;">Less: Tax Credits</td>
+                        <td style="padding: 10px; text-align: right; color: #155724; font-weight: bold;">-${{ "{:,.2f}".format(result.get('total_credits', 0)) if result.get('total_credits') else '0.00' }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" style="background: #6c757d;" onclick="history.back()">← Back</button>
+                <button class="btn" onclick="nextStep()">Next: Summary →</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function nextStep() { window.location.href = '{{ url_for("summary") }}'; }
+    </script>
+</body>
+</html>

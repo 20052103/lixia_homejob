@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary - Tax Return Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px; }
+        .success-box { padding: 20px; background: #d4edda; border: 2px solid #28a745; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .success-box h2 { color: #155724; margin-bottom: 10px; }
+        .success-box p { color: #155724; font-size: 1.1em; }
+        .section { margin-bottom: 25px; }
+        .section h3 { color: #333; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; color: #666; }
+        .info-label { font-weight: 600; }
+        .btn { padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        .buttons { display: flex; gap: 10px; margin-top: 30px; }
+        .buttons button { flex: 1; padding: 12px; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Summary & Review</h1>
+            <p>Review your tax return information</p>
+        </div>
+        <div class="content">
+            <div class="success-box">
+                <h2>🎉 You're Ready!</h2>
+                <p>Your tax return has been prepared. Review the summary below.</p>
+            </div>
+            
+            <div class="section">
+                <h3>Filer Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Name:</span>
+                    <span>{{ filer_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tax Year:</span>
+                    <span>2024</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Filing Status:</span>
+                    <span>Single</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Income Summary</h3>
+                <div class="info-row">
+                    <span class="info-label">Total Income:</span>
+                    <span style="color: #28a745; font-weight: bold;">$0.00</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Deductions & Credits</h3>
+                <div class="info-row">
+                    <span class="info-label">Standard Deduction:</span>
+                    <span>$14,600.00</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Total Credits:</span>
+                    <span style="color: #28a745; font-weight: bold;">$0.00</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Tax Liability</h3>
+                <div class="info-row">
+                    <span class="info-label">Estimated Tax:</span>
+                    <span style="color: #dc3545; font-weight: bold;">$0.00</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estimated Refund:</span>
+                    <span style="color: #28a745; font-weight: bold;">$0.00</span>
+                </div>
+            </div>
+            
+            <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 20px; border-radius: 5px;">
+                <strong>⚠️ Disclaimer:</strong> This tool provides general tax information for educational purposes. For tax filing, consult a qualified tax professional or use official IRS software.
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+                <button class="btn btn-success" onclick="completeFiling()">✓ Complete Filing</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function completeFiling() {
+            alert('✓ Tax return completed!\n\nNext steps:\n1. Review with a tax professional\n2. File with IRS\n3. Keep a copy for your records');
+            window.location.href = '{{ url_for("index") }}';
+        }
+    </script>
+</body>
+</html>

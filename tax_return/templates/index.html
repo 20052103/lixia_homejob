@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Return Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 20px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .feature p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .cta-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 5px 20px rgba(108, 117, 125, 0.4);
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Tax Return Tool</h1>
+            <p>Simplifying Tax Filing with AI-Powered Assistance</p>
+        </div>
+        
+        <div class="content">
+            <div class="features">
+                <div class="feature">
+                    <h3>✓ Material Checklist</h3>
+                    <p>Organized checklist of all documents and information you need for tax filing</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>📁 Document Upload</h3>
+                    <p>Securely upload tax documents (W-2, 1099, receipts, etc.)</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>📊 Income Entry</h3>
+                    <p>Easy-to-use forms for entering all income sources</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>🎯 Deductions</h3>
+                    <p>Maximize deductions with guidance on itemized vs. standard</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>💰 Tax Credits</h3>
+                    <p>Identify and apply all eligible tax credits</p>
+                </div>
+                
+                <div class="feature">
+                    <h3>🧮 Calculate Taxes</h3>
+                    <p>Instant tax calculation with estimated refund/owed</p>
+                </div>
+            </div>
+            
+            <div class="cta-section">
+                <h2 style="color: #333; margin-bottom: 20px;">Get Started Today</h2>
+                <a href="{{ url_for('start_filing') }}" class="btn">Start Filing Now</a>
+                <a href="{{ url_for('help_page') }}" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Disclaimer:</strong> This tool is for informational purposes. Consult a tax professional for complex situations.</p>
+            <p>&copy; 2024 Tax Return Tool. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materials Checklist - Tax Return Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .filer-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .filer-info strong {
+            color: #333;
+        }
+        
+        .progress-section {
+            margin-bottom: 30px;
+        }
+        
+        .progress-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .checklist-category {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .checklist-category h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .checklist-items {
+            list-style: none;
+        }
+        
+        .checklist-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #ddd;
+        }
+        
+        .checklist-item input[type="checkbox"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checklist-item label {
+            flex: 1;
+            cursor: pointer;
+            color: #555;
+        }
+        
+        .checklist-item input[type="checkbox"]:checked + label {
+            color: #667eea;
+            text-decoration: line-through;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .file-upload:hover {
+            background: #f0f2ff;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            cursor: pointer;
+            color: #667eea;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(108, 117, 125, 0.4);
+        }
+        
+        @media (max-width: 600px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Materials Checklist</h1>
+            <p>Gather all required documents for your tax return</p>
+        </div>
+        
+        <div class="content">
+            <div class="filer-info">
+                <strong>Filer:</strong> {{ filer_name }}<br>
+                <strong>Progress:</strong> Review your information and collect documents
+            </div>
+            
+            <!-- PERSONAL INFORMATION SECTION (Already Collected) -->
+            <h3 style="color: #333; margin-bottom: 20px; margin-top: 20px;">✓ Your Information (Already Provided)</h3>
+            
+            <div style="padding: 20px; background: #d4edda; border: 2px solid #28a745; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Name</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.first_name }} {{ personal_info.last_name }}</p>
+                    </div>
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Social Security Number</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.ssn }}</p>
+                    </div>
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Date of Birth</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.date_of_birth }}</p>
+                    </div>
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Filing Status</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.filing_status|title }}</p>
+                    </div>
+                    {% if personal_info.email %}
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Email</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.email }}</p>
+                    </div>
+                    {% endif %}
+                    {% if personal_info.phone %}
+                    <div>
+                        <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">Phone</p>
+                        <p style="color: #155724; font-weight: bold;">{{ personal_info.phone }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <button onclick="editPersonalInfo()" style="margin-top: 15px; padding: 8px 15px; background: #0066cc; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    ✏️ Edit Information
+                </button>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
+                <strong style="color: #155724;">💡 Tip:</strong> 
+                <span style="color: #155724;">Upload your documents as you collect them. Click the checkbox when you have each item ready.</span>
+            </div>
+            
+            <h3 style="color: #333; margin-bottom: 20px; margin-top: 30px;">📋 Required Materials Checklist</h3>
+            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4 style="color: #495057; margin-top: 0; margin-bottom: 15px;">💼 Income Documents</h4>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> W-2 Forms (wages/salary)
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> 1099 Forms (freelance/contract)
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> K-1 Forms (partnerships/S-corps)
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Interest/Dividend statements
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Other income documents
+                        </label>
+                    </div>
+                    <div>
+                        <h4 style="color: #495057; margin-top: 0; margin-bottom: 15px;">📝 Deductions & Credits</h4>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Mortgage interest statements (1098)
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Property tax statements
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Education expense receipts
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Charitable donation records
+                        </label>
+                        <label style="display: block; margin: 12px 0; cursor: pointer;">
+                            <input type="checkbox" style="margin-right: 8px;"> Medical/Dental expense receipts
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 style="color: #333; margin-bottom: 20px; margin-top: 30px;">📄 Required Documents to Upload</h3>
+            
+            <div style="padding: 20px; background: #f0f2ff; border: 2px dashed #667eea; border-radius: 8px; margin-bottom: 20px;">
+                <div class="form-group">
+                    <label for="docCategory">Select Document Category:</label>
+                    <select id="docCategory" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1em;">
+                        <option value="">Choose a category</option>
+                        <option value="income">Income Documents (W-2, 1099, etc.)</option>
+                        <option value="deductions">Deductions (Receipts, Statements)</option>
+                        <option value="credits">Credits Documentation</option>
+                        <option value="other">Other Documents</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="docUpload">Choose Document(s) to Upload:</label>
+                    <input type="file" id="docUpload" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <p style="color: #666; font-size: 0.9em; margin-top: 8px;">
+                        Accepted formats: PDF, Images (JPG, PNG), Documents (DOC, DOCX), Spreadsheets (XLS, XLSX)
+                    </p>
+                </div>
+                
+                <button onclick="uploadDocument()" style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                    📤 Upload Document
+                </button>
+            </div>
+            
+            <div id="uploadedDocs" style="background: #f8f9fa; padding: 20px; border-radius: 8px; display: none; margin-bottom: 20px;">
+                <h4 style="color: #333; margin-bottom: 15px;">✓ Uploaded Documents:</h4>
+                <ul id="uploadedList" style="list-style: none;"></ul>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 20px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
+                <strong style="color: #155724;">✓ Tip:</strong> 
+                <span style="color: #155724;">Upload your documents as you collect them. Click the checkbox when you have each item ready.</span>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+                <button class="btn btn-primary" onclick="nextStep()">Next: Income →</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function editPersonalInfo() {
+            if (confirm('Do you need to correct your personal information? You will go back to the registration page.')) {
+                window.location.href = '{{ url_for("start_filing") }}';
+            }
+        }
+        
+        function uploadDocument() {
+            const fileInput = document.getElementById('docUpload');
+            const category = document.getElementById('docCategory').value;
+            const files = fileInput.files;
+            
+            if (!category) {
+                alert('Please select a document category');
+                return;
+            }
+            
+            if (files.length === 0) {
+                alert('Please select at least one file to upload');
+                return;
+            }
+            
+            // Show uploading message
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Uploading...';
+            btn.disabled = true;
+            
+            // Upload each file
+            Array.from(files).forEach(file => {
+                const fd = new FormData();
+                fd.append('category', category);
+                fd.append('file', file);
+                
+                fetch('{{ url_for("upload_document") }}', {
+                    method: 'POST',
+                    body: fd
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addUploadedDoc(file.name, category);
+                        console.log('✓ File uploaded:', file.name);
+                    } else {
+                        alert('Error uploading ' + file.name + ': ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error))
+                .finally(() => {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                });
+            });
+            
+            // Clear file input
+            fileInput.value = '';
+            document.getElementById('docCategory').value = '';
+        }
+        
+        function addUploadedDoc(filename, category) {
+            const uploadedSection = document.getElementById('uploadedDocs');
+            const uploadedList = document.getElementById('uploadedList');
+            
+            uploadedSection.style.display = 'block';
+            
+            const li = document.createElement('li');
+            li.style.cssText = 'padding: 10px; background: white; border-radius: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;';
+            li.innerHTML = `
+                <span>
+                    <strong>${filename}</strong> <span style="color: #999; font-size: 0.9em;">(${category})</span>
+                </span>
+                <span style="color: #28a745; font-weight: bold;">✓ Uploaded</span>
+            `;
+            
+            uploadedList.appendChild(li);
+        }
+        
+        function nextStep() {
+            window.location.href = '{{ url_for("income_input") }}';
+        }
+    </script>
+</body>
+</html>
