@@ -35,7 +35,7 @@ class ModelManager:
                 MODEL_NAME,
                 cache_dir=MODEL_CACHE_DIR,
                 device_map="auto",
-                torch_dtype=torch.float16 if DTYPE == "auto" else DTYPE,
+                dtype=torch.float16 if DTYPE == "auto" else DTYPE,
                 trust_remote_code=True,
                 attn_implementation="flash_attention_2" if USE_FLASH_ATTENTION else None
             )

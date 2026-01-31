@@ -17,5 +17,5 @@ TOP_P = 0.95
 TOP_K = 40
 
 # 模型加载配置
-USE_FLASH_ATTENTION = True  # 使用Flash Attention 2
-LOAD_IN_8BIT = False        # 不使用8-bit量化
+USE_FLASH_ATTENTION = False  # 禁用Flash Attention（flash_attn未装）
+LOAD_IN_8BIT = False         # 不使用8-bit量化
