@@ -4,7 +4,7 @@
 
 # 模型配置
 MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
-MODEL_CACHE_DIR = "../../model"  # 外部模型目录
+MODEL_CACHE_DIR = "D:/repo/model"  # 外部模型目录（绝对路径）
 
 # 推理设备配置
 DEVICE = "cuda"  # 使用CUDA GPU

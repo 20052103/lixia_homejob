@@ -19,18 +19,46 @@ class ModelManager:
         os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
     
     def download_model(self):
-        """下载并加载模型"""
+        """从本地加载模型（已预下载）"""
         try:
-            print(f"📥 从HuggingFace加载 {MODEL_NAME}...")
+            # 首先尝试从本地目录加载（无需网络）
+            local_model_path = os.path.join(MODEL_CACHE_DIR, "models--Qwen--Qwen2.5-7B-Instruct", "snapshots")
             
-            # 加载分词器
+            if os.path.exists(local_model_path):
+                # 获取第一个snapshot目录
+                snapshots = os.listdir(local_model_path)
+                if snapshots:
+                    snapshot_path = os.path.join(local_model_path, snapshots[0])
+                    print(f"📂 从本地加载模型: {snapshot_path}")
+                    
+                    # 加载分词器
+                    self.tokenizer = AutoTokenizer.from_pretrained(
+                        snapshot_path,
+                        trust_remote_code=True,
+                        local_files_only=True
+                    )
+                    
+                    # 加载模型
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        snapshot_path,
+                        device_map="auto",
+                        dtype=torch.float16 if DTYPE == "auto" else DTYPE,
+                        trust_remote_code=True,
+                        local_files_only=True,
+                        attn_implementation="flash_attention_2" if USE_FLASH_ATTENTION else None
+                    )
+                    
+                    print("✅ 模型加载完成")
+                    return True
+            
+            # 如果本地不存在，则从HuggingFace下载
+            print(f"📥 从HuggingFace加载 {MODEL_NAME}...")
             self.tokenizer = AutoTokenizer.from_pretrained(
                 MODEL_NAME,
                 cache_dir=MODEL_CACHE_DIR,
                 trust_remote_code=True
             )
             
-            # 加载模型
             self.model = AutoModelForCausalLM.from_pretrained(
                 MODEL_NAME,
                 cache_dir=MODEL_CACHE_DIR,
