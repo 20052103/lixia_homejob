@@ -1,0 +1,26 @@
+# =====================
+# Local large datasets
+# =====================
+/data/
+/**/data/
+
+# archives
+*.zip
+*.tar
+*.gz
+*.7z
+
+# model checkpoints
+*.pt
+*.pth
+*.ckpt
+
+# logs
+logs/
+*.log
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/

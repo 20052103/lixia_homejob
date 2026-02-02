@@ -1,0 +1,29 @@
+data:
+  dac_dir: "D:/repo/large data/criteo/dac"
+  train_file: "train.txt"   # 如果你的文件名不是这个，改这里
+  test_file:  "test.txt"    # 可选，没有就留着
+preprocess:
+  dense_transform: "log1p"  # log1p on positive values
+  hash_bins: 2000000        # 每个field的hash桶数（可调：1e6~4e6）
+split:
+  val_ratio: 0.05
+  seed: 42
+loader:
+  batch_size: 4096
+  num_workers: 0
+  prefetch_factor: 2
+  pin_memory: true
+inspect:
+  max_lines: 200000
+  sparse_topk_limit: 50
+model:
+  embed_dim: 16
+  hidden_dims: [256, 128, 64]
+  dropout: 0.0
+train:
+  lr: 0.003
+  epochs: 2
+  steps_per_epoch: 5000
+  log_every: 50
+gold:
+  max_lines: 500000
