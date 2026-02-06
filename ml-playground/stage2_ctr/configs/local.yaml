@@ -27,3 +27,11 @@ train:
   log_every: 50
 gold:
   max_lines: 500000
+dcn:
+  cross_layers: 3
+label:
+  p_prior: 0.243425
+dcnv2:
+  cross_layers: 3
+  rank: 32
+  experts: 4

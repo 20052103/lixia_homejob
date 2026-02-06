@@ -351,3 +351,107 @@ If you want, next I can:
 - add a **Results table** section (date / config / metrics),
 - or continue straight into **DCN (CrossNet v1) implementation** step-by-step.
 ```
+Stage 2 — CTR Modeling Results & Conclusions
+Experimental Setup
+
+Dataset: Criteo DAC (Kaggle version), fixed gold eval dataset (gold_eval.txt)
+
+Features:
+
+13 dense features (log / log1p transformed)
+
+26 sparse categorical features (hashing trick)
+
+Artifacts reused across all models:
+
+Same feature hashing (hash_bins=2,000,000)
+
+Same dense preprocessing
+
+Same gold eval split
+
+Metric:
+
+Primary: Logloss
+
+Secondary: AUC
+
+Baseline probability:
+Positive rate ≈ 0.251
+
+All models were evaluated on the same gold dataset to ensure apples-to-apples comparison.
+
+Model Comparison (Gold Eval)
+Model	Logloss ↓	AUC ↑	Calibration (avg_pred vs pos_rate)
+DNN baseline	0.5285	0.7570	0.2620 vs 0.2513
+DCN v1 (CrossNet v1)	0.5319	0.7535	0.2513 vs 0.2513
+DCN v2 (Low-rank + MoE)	0.5257	0.7594	0.2688 vs 0.2513
+Key Observations
+1. DNN baseline is already strong
+
+The DNN significantly outperforms a naive baseline (always predicting global positive rate).
+
+AUC ≈ 0.757 indicates strong ranking ability from embeddings + MLP alone.
+
+This confirms that most first-order and some interaction signals are already captured.
+
+2. DCN v1 underperforms the DNN
+
+DCN v1 shows worse logloss and AUC than the DNN baseline.
+
+However, it achieves near-perfect calibration (avg_pred ≈ pos_rate).
+
+This behavior aligns with known limitations of rank-1 CrossNet v1:
+
+Single global interaction pattern
+
+Limited expressive power
+
+Tendency to smooth predictions toward the mean
+
+Conclusion: DCN v1 is too rigid for large-scale, noisy CTR data when the DNN baseline is strong.
+
+3. DCN v2 outperforms both DNN and DCN v1
+
+DCN v2 achieves the best logloss and AUC among all models.
+
+Improvements over DNN:
+
+Logloss ↓ ~0.0028
+
+AUC ↑ ~0.0024
+
+This gain is meaningful and typical for production CTR systems.
+
+The improvement comes from DCN v2’s architectural advantages:
+
+Low-rank cross layers (higher expressive power than rank-1)
+
+Mixture-of-experts (MoE) with gating, enabling:
+
+Sample-specific interaction patterns
+
+Adaptive feature crossing across different user/content contexts
+
+4. Calibration trade-off
+
+DCN v2 slightly over-predicts probabilities (avg_pred > pos_rate).
+
+This is a common trade-off when optimizing ranking performance.
+
+Calibration can be corrected independently (e.g., temperature scaling) without affecting AUC.
+
+Final Conclusion
+
+When using a strong embedding-based DNN baseline, DCN v1 may fail to add value due to its limited interaction capacity.
+DCN v2, with low-rank and gated mixture-of-experts cross layers, successfully captures higher-order, sample-dependent feature interactions and delivers consistent gains in both logloss and AUC on a fixed gold evaluation set.
+
+This validates DCN v2 as the preferred cross-based architecture for CTR modeling in this setup.
+
+Next Steps
+
+Optional calibration (temperature scaling) on gold/validation data
+
+Hyperparameter sweeps on DCN v2 (rank, experts, learning rate)
+
+Extend comparison to DCNv2 vs wider/deeper DNN baselines
