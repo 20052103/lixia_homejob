@@ -127,7 +127,8 @@ def main():
     print("name\tmissing_rate\tnon_empty\tunique_est(sample)\ttop_values(sample)")
     for j, name in enumerate(sparse_names):
         miss_rate = sparse_missing[j] / total
-        non_empty = sparse_cnt[j]
+        non_empty = sparse_cn
+        t[j]
         uniq = len(sparse_unique_est[j])
         top = sparse_top[j].most_common(topk_limit)
         top_str = ", ".join([f"{k}:{v}" for k, v in top[:10]])  # 只打印前10个最频繁

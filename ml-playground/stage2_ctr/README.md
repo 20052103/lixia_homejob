@@ -85,11 +85,47 @@ DCN v2 significantly increases modeling capacity for higher-order interactions.
 
 ## Gold Evaluation Results
 
-| Model     | Logloss (↓) | AUC (↑) | avg_pred vs pos_rate |
-|-----------|-------------|---------|----------------------|
-| DNN       | 0.5285      | 0.7570  | 0.2620 vs 0.2513     |
-| DCN v1    | 0.5319      | 0.7535  | 0.2513 vs 0.2513     |
-| **DCN v2**| **0.5257**  | **0.7594** | 0.2688 vs 0.2513 |
+## Evaluation Results (Preliminary, with Known Leakage)
+
+> ⚠️ **Important note**  
+> The current evaluation split (`gold_eval.txt`) was sampled from `train.txt` and used for
+> training-time monitoring / early stopping (GBDT).  
+> Therefore, the metrics below are **optimistic** and should be used for **relative comparison only**,
+> not as final test results.
+
+**Evaluation set**: `gold_eval.txt`  
+**Positive rate**: ~0.251  
+**Samples**: 500,000
+
+| Model | Category | Logloss ↓ | AUC ↑ | avg_pred vs pos_rate | Notes |
+|------|----------|-----------|-------|----------------------|-------|
+| Always predict p | Naive baseline | ~0.555 | 0.500 | ≈ p | Reference |
+| GBDT (LightGBM) | Tree-based | **0.4586** | **0.7859** | N/A | Strong tabular baseline (early-stopped on gold) |
+| DCN v2 | Deep (CrossNet v2 + MoE) | 0.5257 | 0.7594 | 0.2688 vs 0.2513 | Best deep model |
+| DNN baseline | Deep (Embedding + MLP) | 0.5285 | 0.7570 | 0.2620 vs 0.2513 | Strong baseline |
+| DCN v1 | Deep (CrossNet v1) | 0.5319 | 0.7535 | **0.2513 vs 0.2513** | Well-calibrated, weak ranking |
+
+---
+
+## Intended Final Evaluation Protocol (No Leakage)
+
+After creating clean, non-overlapping splits, all models will be evaluated using the following setup:
+
+| Split | Usage | Notes |
+|------|------|------|
+| `train_minus_val_test.txt` | Model training | Parameter updates only |
+| `val.txt` | Early stopping / tuning | Used by GBDT and deep models |
+| `test_gold.txt` | Final evaluation | **Never used for training or model selection** |
+
+The final comparison table will be regenerated **only on `test_gold.txt`**.
+
+---
+
+## Expected Relative Ordering (Based on Preliminary Results)
+
+Although absolute values will change after removing leakage, the relative ordering is expected to remain:
+
+
 
 - Gold eval size: **500,000 samples**
 - Positive rate: **0.251**

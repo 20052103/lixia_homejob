@@ -1,0 +1,32 @@
+data:
+  dac_dir: "D:/repo/large data/criteo/dac"
+  train_file: "train.txt"
+preprocess:
+  dense_transform: "log1p"
+  hash_bins: 2000000
+split:
+  val_ratio: 0.05
+  seed: 42
+loader:
+  batch_size: 4096
+  num_workers: 0
+  prefetch_factor: 2
+  pin_memory: true
+train:
+  epochs: 2
+  steps_per_epoch: 2000
+  log_every: 100
+  lr_embed: 0.01
+  lr_other: 0.001
+  wd_other: 0.01
+  embed_momentum: 0.0
+model:
+  d_token: 64
+  n_heads: 4
+  n_layers: 2
+  dropout: 0.1
+  dense_token_mode: "single"
+  pooling: "mean"
+  ckpt_dir: "D:/repo/large data/model/stage3_autoint"
+  pooling: "cls"     # FT-Transformer 更常用 cls
+  ffn_mult: 4        # 可选：默认我也设成 4
