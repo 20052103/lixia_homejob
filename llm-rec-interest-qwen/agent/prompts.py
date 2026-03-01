@@ -33,3 +33,8 @@ You MUST ONLY use paths under this root. If you need a path, first call list_dir
 # Optional: a short “style” reminder for non-tool responses
 ASSISTANT_STYLE = """Be concise and practical. Use bullet points when helpful.
 If you used tools, end with a short summary of findings and next steps."""
+# ===== Pure Chat Mode (No Tools) =====
+CHAT_SYSTEM_PROMPT = """You are a helpful, friendly AI assistant.
+Answer questions conversationally and naturally.
+Be concise but comprehensive.
+Use examples when helpful."""
