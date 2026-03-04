@@ -1,0 +1,27 @@
+>>> for i, d in enumerate(sd.query_devices()):
+...     if d["max_input_channels"] > 0:
+...         print(f"[IN {i}] {d['name']}  (in_ch={d['max_input_channels']})")
+...
+[IN 0] Microsoft Sound Mapper - Input  (in_ch=2)
+[IN 1] Microphone (Jabra Evolve2 40 SE  (in_ch=1)
+[IN 6] Primary Sound Capture Driver  (in_ch=2)
+[IN 7] Microphone (Jabra Evolve2 40 SE)  (in_ch=1)
+[IN 15] Microphone (Jabra Evolve2 40 SE)  (in_ch=1)
+[IN 17] Microphone (Realtek HD Audio Mic input)  (in_ch=2)
+[IN 19] Stereo Mix (Realtek HD Audio Stereo input)  (in_ch=2)
+[IN 22] Microphone (Jabra Evolve2 40 SE)  (in_ch=1)
+
+
+import sounddevice as sd, numpy as np, wave
+IN_ID = 7  # <- 改成你的输入设备ID
+sr = 16000
+sec = 3
+print("Recording from input device:", IN_ID)
+audio = sd.rec(int(sec*sr), samplerate=sr, channels=1, dtype="int16", device=IN_ID)
+sd.wait()
+rms = np.sqrt(np.mean(audio.astype(np.float32)**2))
+print("RMS:", rms)
+with wave.open("mic_test.wav","wb") as wf:
+    wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sr)
+    wf.writeframes(audio.tobytes())
+print("Saved mic_test.wav")

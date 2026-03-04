@@ -32,7 +32,7 @@ class AgentConfig:
     # ===== Qwen3 LM Studio config =====
     base_url: str = "http://localhost:1234/v1"
     api_key: str = "lm-studio"
-    model_name: str = "qwen3-coder-30b-a3b-instruct"
+    model_name: str = "qwen3.5-27b"
 
     max_new_tokens: int = 512
     temperature: float = 0.2
