@@ -11,6 +11,7 @@ import argparse
 
 from agent.agent import AgentConfig, LocalAgent
 from agent.tools import ToolSandbox
+from agent.config import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, DEFAULT_MAX_STEPS
 
 
 # ============================================================
@@ -82,7 +83,7 @@ from agent.tools import ToolSandbox
 # ============================================================
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max_steps", type=int, default=6)
+    parser.add_argument("--max_steps", type=int, default=DEFAULT_MAX_STEPS)
     parser.add_argument("--skill", default="auto", choices=["auto", "chat", "tool"])
 
     # 可选：把 sandbox root 显式设成你的项目根目录（更可控）
@@ -103,12 +104,9 @@ def main():
     )
 
     cfg = AgentConfig(
-        base_url="http://localhost:1234/v1",
-        api_key="lm-studio",
-        model_name="qwen3-coder-30b-a3b-instruct",
-        max_new_tokens=512,
-        temperature=0.2,
-        top_p=0.95,
+        max_new_tokens=DEFAULT_MAX_TOKENS,
+        temperature=DEFAULT_TEMPERATURE,
+        top_p=DEFAULT_TOP_P,
     )
 
     agent = LocalAgent(cfg=cfg, sandbox=sandbox)

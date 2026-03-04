@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 # ===== Add common_ai (STT module) to path =====
-common_ai_dir = Path(r"D:\repo\common_ai")
+common_ai_dir = Path(__file__).parent.parent.parent / "common_ai"
 if common_ai_dir.exists() and str(common_ai_dir) not in sys.path:
     sys.path.insert(0, str(common_ai_dir))
 
@@ -37,6 +37,7 @@ from stt.audio_io import record_wav_auto_vad, VADConfig
 # ===== Import Agent (from parent/agent) =====
 from agent.agent import AgentConfig, LocalAgent
 from agent.tools import ToolSandbox
+from agent.config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, LM_STUDIO_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P
 
 
 def main():
@@ -60,8 +61,8 @@ def main():
     parser.add_argument("--max_steps", type=int, default=6, help="Max reasoning steps for agent")
     parser.add_argument("--skill", choices=["auto", "chat", "tool"], default="auto", help="Force skill mode (default=chat, use 'tool' for file/command access)")
     parser.add_argument("--root", type=str, default=r"D:\repo", help="Sandbox root for agent tools")
-    parser.add_argument("--temperature", type=float, default=0.2, help="LLM temperature")
-    parser.add_argument("--max_tokens", type=int, default=512, help="Max output tokens")
+    parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE, help="LLM temperature")
+    parser.add_argument("--max_tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Max output tokens")
 
     args = parser.parse_args()
 
@@ -91,9 +92,9 @@ def main():
     )
 
     cfg = AgentConfig(
-        base_url="http://localhost:1234/v1",
-        api_key="lm-studio",
-        model_name="qwen3.5-27b",
+        base_url=LM_STUDIO_BASE_URL,
+        api_key=LM_STUDIO_API_KEY,
+        model_name=LM_STUDIO_MODEL_NAME,
         max_new_tokens=args.max_tokens,
         temperature=args.temperature,
         top_p=0.95,
@@ -118,7 +119,7 @@ def main():
         print(f"  Model:       {args.model}")
         print(f"  Language:    {args.lang}")
         print("\nAgent Settings:")
-        print(f"  Model:       qwen3-coder-30b-a3b-instruct")
+        print(f"  Model:       qwen3.5-27b")
         print(f"  Skill:       {args.skill}")
         print(f"  Max Steps:   {args.max_steps}")
         print("\n✓ Ready to accept voice input. Speak into microphone.")

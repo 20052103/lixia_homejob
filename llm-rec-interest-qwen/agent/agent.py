@@ -17,6 +17,7 @@ from openai import OpenAI
 
 from agent.prompts import SYSTEM_PROMPT, ASSISTANT_STYLE, CHAT_SYSTEM_PROMPT
 from agent.tools import ToolSandbox, ToolResult
+from agent.config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, LM_STUDIO_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P
 
 
 _JSON_LINE_RE = re.compile(r'^\s*\{.*\}\s*$')
@@ -30,13 +31,13 @@ class AgentConfig:
     # dtype: str = "auto"
 
     # ===== Qwen3 LM Studio config =====
-    base_url: str = "http://localhost:1234/v1"
-    api_key: str = "lm-studio"
-    model_name: str = "qwen3.5-27b"
+    base_url: str = LM_STUDIO_BASE_URL
+    api_key: str = LM_STUDIO_API_KEY
+    model_name: str = LM_STUDIO_MODEL_NAME
 
-    max_new_tokens: int = 512
-    temperature: float = 0.2
-    top_p: float = 0.95
+    max_new_tokens: int = DEFAULT_MAX_TOKENS
+    temperature: float = DEFAULT_TEMPERATURE
+    top_p: float = DEFAULT_TOP_P
 
 
 class LocalAgent:
@@ -105,6 +106,7 @@ class LocalAgent:
             messages=temp_messages,
             temperature=self.cfg.temperature,
             max_tokens=self.cfg.max_new_tokens,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         text = response.choices[0].message.content or ""
         # 纯聊天也要把assistant回复记录进对话历史（不然上下文断）
@@ -144,6 +146,7 @@ class LocalAgent:
             messages=self.messages,
             temperature=self.cfg.temperature,
             max_tokens=self.cfg.max_new_tokens,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         )
         text = response.choices[0].message.content
         return (text or "").strip()
