@@ -1,0 +1,5 @@
+# llama.cpp binaries (build artifacts)
+llama/
+**/*.dll
+**/*.exe
+**/*.pdb
