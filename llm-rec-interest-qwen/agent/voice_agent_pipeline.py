@@ -40,6 +40,68 @@ from agent.tools import ToolSandbox
 from agent.config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, LM_STUDIO_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P
 
 
+# ===== TTS (Text-to-Speech) Helpers =====
+def init_tts_engine():
+    """Initialize pyttsx3 TTS engine for Windows."""
+    try:
+        import pyttsx3
+        engine = pyttsx3.init('sapi5')  # Use SAPI5 for Windows (better support)
+        engine.setProperty('rate', 150)  # Speech rate
+        engine.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
+        return engine
+    except ImportError:
+        print("⚠️  pyttsx3 not installed. Install with: pip install pyttsx3")
+        return None
+    except Exception as e:
+        print(f"⚠️  Failed to initialize TTS: {e}")
+        return None
+
+
+def list_available_voices(engine):
+    """List all available TTS voices."""
+    if engine is None:
+        return
+    try:
+        voices = engine.getProperty('voices')
+        print("\n=== Available TTS Voices ===")
+        for i, voice in enumerate(voices):
+            print(f"{i}: {voice.name}")
+        print()
+    except Exception as e:
+        print(f"Error listing voices: {e}")
+
+
+def speak_text(text: str, voice_name: Optional[str] = None):
+    """Speak text using TTS engine in a separate thread (non-blocking)."""
+    
+    def _speak():
+        try:
+            import pyttsx3
+            # Create a fresh engine for each speech operation
+            engine = pyttsx3.init('sapi5')
+            engine.setProperty('rate', 150)
+            engine.setProperty('volume', 0.9)
+            
+            # Set voice if specified
+            if voice_name:
+                voices = engine.getProperty('voices')
+                for voice in voices:
+                    if voice_name.lower() in voice.name.lower():
+                        engine.setProperty('voice', voice.id)
+                        break
+            
+            engine.say(text)
+            engine.runAndWait()
+        except ImportError:
+            print("⚠️  pyttsx3 not installed")
+        except Exception as e:
+            print(f"TTS Error: {e}")
+    
+    # Run TTS in a separate thread to avoid blocking
+    tts_thread = threading.Thread(target=_speak, daemon=True)
+    tts_thread.start()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Voice Agent Pipeline: Mic → STT → Agent")
 
@@ -64,7 +126,18 @@ def main():
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE, help="LLM temperature")
     parser.add_argument("--max_tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Max output tokens")
 
+    # ===== TTS args =====
+    parser.add_argument("--speak", action="store_true", help="Speak agent response using text-to-speech")
+    parser.add_argument("--voice", type=str, default=None, help="TTS voice name (e.g., 'Zira', 'David'). List available with --list-voices")
+    parser.add_argument("--list-voices", action="store_true", help="List available TTS voices and exit")
+
     args = parser.parse_args()
+
+    # ===== Handle --list-voices =====
+    if args.list_voices:
+        tts_engine = init_tts_engine()
+        list_available_voices(tts_engine)
+        return
 
     # ===== Signal handler for graceful exit =====
     exit_flag = {'pressed': False}
@@ -74,6 +147,11 @@ def main():
         print("\n\n⏹️  Ctrl+C pressed. Shutting down...", flush=True)
     
     signal.signal(signal.SIGINT, signal_handler)
+
+    # ===== Initialize TTS Engine (if --speak enabled) =====
+    if args.speak:
+        if not args.quiet:
+            print("[INIT] TTS Engine enabled (pyttsx3)...", flush=True)
 
     # ===== Initialize STT Engine =====
     if not args.quiet:
@@ -252,6 +330,15 @@ def main():
                 break
 
             print(f"\n✓ Agent: {response}\n")
+            
+            # ===== Speak response if enabled =====
+            if args.speak:
+                if not args.quiet:
+                    print("🔊 Speaking response...", flush=True)
+                speak_text(response, args.voice)
+                # Give TTS thread a moment to start
+                time.sleep(0.5)
+            
             if not args.quiet:
                 print("-" * 60)
 
