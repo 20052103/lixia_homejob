@@ -39,6 +39,7 @@ from common_ai.stt.audio_io import (
 # Agent
 # ------------------------------------------------
 from agent import LocalAgent, AgentConfig
+from agent.tools import ToolSandbox
 
 # ------------------------------------------------
 # Audio input monitor for barge-in
@@ -48,6 +49,7 @@ import sounddevice as sd
 
 _SENTENCE_RE = re.compile(r"(?<=[\.\!\?\。\！\？])\s+")
 _SAFE_VOICE_RE = re.compile(r"[^a-zA-Z0-9 _\-]")
+_BULLET_PREFIX_RE = re.compile(r"^\s*[-*•]+\s*")
 
 
 def split_ready_sentences(buffer: str) -> tuple[List[str], str]:
@@ -67,6 +69,78 @@ def _sanitize_voice_name(voice: Optional[str]) -> str:
     if not voice:
         return ""
     return _SAFE_VOICE_RE.sub("", voice).strip()
+
+
+def _clean_tts_text(text: str) -> str:
+    text = (text or "").replace("\r", "\n")
+    lines = []
+    for raw in text.split("\n"):
+        s = raw.strip()
+        if not s:
+            continue
+        s = _BULLET_PREFIX_RE.sub("", s)
+        s = re.sub(r"\s+", " ", s).strip()
+        if s:
+            lines.append(s)
+    return "\n".join(lines)
+
+
+def chunk_text_for_tts(text: str, max_chars: int = 220) -> List[str]:
+    """
+    Convert long / multiline model output into shorter, speakable chunks.
+    This is much more reliable than sending one long blob to System.Speech.
+    """
+    text = _clean_tts_text(text)
+    if not text:
+        return []
+
+    chunks: List[str] = []
+
+    paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+    for para in paragraphs:
+        sentences = _SENTENCE_RE.split(para)
+        buf = ""
+
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+
+            if not buf:
+                buf = sent
+                continue
+
+            candidate = buf + " " + sent
+            if len(candidate) <= max_chars:
+                buf = candidate
+            else:
+                chunks.append(buf.strip())
+                buf = sent
+
+        if buf.strip():
+            chunks.append(buf.strip())
+
+    # Fallback for a very long sentence with no punctuation.
+    final_chunks: List[str] = []
+    for c in chunks:
+        if len(c) <= max_chars:
+            final_chunks.append(c)
+            continue
+
+        words = c.split()
+        buf = ""
+        for w in words:
+            candidate = w if not buf else buf + " " + w
+            if len(candidate) <= max_chars:
+                buf = candidate
+            else:
+                if buf.strip():
+                    final_chunks.append(buf.strip())
+                buf = w
+        if buf.strip():
+            final_chunks.append(buf.strip())
+
+    return final_chunks
 
 
 class TTSWorker:
@@ -390,13 +464,51 @@ def drain_tts_with_interrupt(tts: Optional[TTSWorker], barge: Optional[AdaptiveB
         time.sleep(0.03)
 
 
-def stream_to_tts(
+def speak_full_text(
+    text: str,
+    tts: Optional[TTSWorker],
+    barge: Optional[AdaptiveBargeInMonitor],
+    enable_barge_in: bool,
+):
+    if not tts:
+        return
+
+    chunks = chunk_text_for_tts(text)
+    if not chunks:
+        return
+
+    tts.reset_after_interrupt()
+
+    if barge is not None and enable_barge_in:
+        barge.clear_trigger()
+        barge.arm()
+        time.sleep(max(0.03, barge.calibrate_ms / 1000.0 + 0.02))
+
+    try:
+        for chunk in chunks:
+            if enable_barge_in and barge is not None and barge.triggered():
+                tts.interrupt()
+                print("\n[interrupt] user speech detected during TTS.\n", flush=True)
+                return
+            tts.speak_async(chunk)
+
+        drain_tts_with_interrupt(tts, barge, enable_barge_in)
+    finally:
+        if barge is not None:
+            barge.disarm()
+
+
+def stream_to_tts_chat_only(
     agent: LocalAgent,
     user_text: str,
     tts: Optional[TTSWorker],
     barge: Optional[AdaptiveBargeInMonitor],
     enable_barge_in: bool,
 ) -> str:
+    """
+    Stream normal chat responses token by token.
+    This path is low latency but does NOT support tool use.
+    """
     collected: List[str] = []
     sentence_buf = ""
     stop_event = threading.Event()
@@ -440,6 +552,41 @@ def stream_to_tts(
     return "".join(collected).strip()
 
 
+def respond_with_voice(
+    agent: LocalAgent,
+    user_text: str,
+    tts: Optional[TTSWorker],
+    barge: Optional[AdaptiveBargeInMonitor],
+    enable_barge_in: bool,
+    skill: str,
+    max_steps: int,
+) -> str:
+    """
+    Normal chat -> stream for low latency.
+    Tool/web-search requests -> run full agent.chat(...) so tools can execute.
+    """
+    chosen = agent.route(user_text, forced_skill=skill)
+
+    if chosen == "tool":
+        answer = agent.chat(user_text, max_steps=max_steps, skill="tool")
+        print(f"Agent> {answer}\n", flush=True)
+        speak_full_text(
+            text=answer,
+            tts=tts,
+            barge=barge,
+            enable_barge_in=enable_barge_in,
+        )
+        return answer
+
+    return stream_to_tts_chat_only(
+        agent=agent,
+        user_text=user_text,
+        tts=tts,
+        barge=barge,
+        enable_barge_in=enable_barge_in,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -460,8 +607,13 @@ def main():
     parser.add_argument("--prompt", default="")
 
     # agent
-    parser.add_argument("--skill", default="chat", choices=["auto", "chat", "tool"])
+    parser.add_argument("--skill", default="auto", choices=["auto", "chat", "tool"])
     parser.add_argument("--max_steps", type=int, default=4)
+    parser.add_argument(
+        "--root",
+        default=str(LLM_REPO_ROOT),
+        help="Allowed sandbox root for tools such as read_file/list_dir/run_cmd.",
+    )
 
     # TTS / voice UX
     speak_group = parser.add_mutually_exclusive_group()
@@ -495,8 +647,16 @@ def main():
         compute_type="float16",
     )
 
+    sandbox = ToolSandbox(
+        allowed_roots=[args.root],
+        allowed_cmd_prefixes=["python", "py", "git", "dir", "ls", "pip"],
+        max_read_bytes=200_000,
+        max_output_chars=40_000,
+        cwd=args.root,
+    )
+
     cfg = AgentConfig()
-    agent = LocalAgent(cfg=cfg, sandbox=None)
+    agent = LocalAgent(cfg=cfg, sandbox=sandbox)
 
     tts = TTSWorker(
         voice_contains=args.voice,
@@ -521,9 +681,9 @@ def main():
 
     print("\n[Voice Agent Ready] Ctrl+C to exit.\n", flush=True)
     print(
-        f"[defaults] speak={args.speak}, voice={args.voice}, barge_in={args.barge_in}, "
+        f"[defaults] speak={args.speak}, voice={args.voice}, skill={args.skill}, barge_in={args.barge_in}, "
         f"barge_min_abs_rms={args.barge_min_abs_rms}, barge_multiplier={args.barge_multiplier}, "
-        f"barge_hold_ms={args.barge_hold_ms}, barge_calibrate_ms={args.barge_calibrate_ms}\n",
+        f"barge_hold_ms={args.barge_hold_ms}, barge_calibrate_ms={args.barge_calibrate_ms}, root={args.root}\n",
         flush=True,
     )
 
@@ -561,12 +721,14 @@ def main():
                 print(f"\nYou> {text}\n", flush=True)
 
                 if args.speak:
-                    _ = stream_to_tts(
+                    _ = respond_with_voice(
                         agent=agent,
                         user_text=text,
                         tts=tts,
                         barge=barge,
                         enable_barge_in=bool(args.barge_in),
+                        skill=args.skill,
+                        max_steps=args.max_steps,
                     )
                 else:
                     answer = agent.chat(text, max_steps=args.max_steps, skill=args.skill)

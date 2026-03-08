@@ -33,6 +33,7 @@ except ImportError:
 
 
 _JSON_LINE_RE = re.compile(r"^\s*\{.*\}\s*$")
+_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2}|[A-Z][a-z]+ \d{1,2}, 20\d{2})\b")
 
 
 @dataclass
@@ -55,7 +56,6 @@ class LocalAgent:
             api_key=cfg.api_key,
         )
 
-        # session memory
         self.messages: List[Dict[str, str]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": ASSISTANT_STYLE},
@@ -76,6 +76,33 @@ class LocalAgent:
 
     def _history_without_system(self) -> List[Dict[str, str]]:
         return [m for m in self.messages if m.get("role") != "system"]
+
+    def _looks_time_sensitive(self, text: str) -> bool:
+        t = (text or "").lower()
+        keywords = [
+            "news", "latest", "recent", "today", "current", "update", "updates",
+            "breaking", "headline", "headlines",
+            "market", "stock", "stocks", "earnings", "price", "prices",
+            "war", "conflict", "iran", "israel", "ukraine", "tariff", "fed",
+        ]
+        return any(k in t for k in keywords)
+
+    def _needs_tool_search(self, text: str) -> bool:
+        return self._looks_time_sensitive(text)
+
+    def _answer_has_date(self, text: str) -> bool:
+        return bool(_DATE_RE.search(text or ""))
+
+    def _tool_result_uses_search_web(self) -> bool:
+        for m in self.messages:
+            if m.get("role") != "user":
+                continue
+            content = m.get("content", "")
+            if not content.startswith("TOOL_RESULT:\n"):
+                continue
+            if '"tool": "search_web"' in content or '"tool":"search_web"' in content:
+                return True
+        return False
 
     def chat_simple(self, user_text: str) -> str:
         temp_messages: List[Dict[str, str]] = [
@@ -141,8 +168,14 @@ class LocalAgent:
                 return "chat"
             return forced_skill
 
-        t = user_text.lower()
+        t = (user_text or "").lower()
+
         if t.startswith("tool:"):
+            return "tool"
+        if t.startswith("chat:"):
+            return "chat"
+
+        if self._needs_tool_search(user_text):
             return "tool"
 
         return "chat"
@@ -209,7 +242,73 @@ class LocalAgent:
                 days_ahead=int(args.get("days_ahead", 7)),
             )
 
+        if tool == "search_web":
+            if not hasattr(self.sandbox, "search_web"):
+                return ToolResult(False, "search_web is not implemented in ToolSandbox.", {"tool": tool})
+            return self.sandbox.search_web(
+                query=str(args.get("query", "")),
+                max_results=int(args.get("max_results", 5)),
+            )
+
         return ToolResult(False, f"Unknown tool: {tool}", {"tool": tool})
+
+    def _append_tool_result(self, tool_name: str, result: ToolResult):
+        obs = {
+            "tool": tool_name,
+            "ok": result.ok,
+            "output": result.output,
+            "meta": result.meta,
+        }
+
+        extra_instruction = ""
+        if tool_name == "search_web":
+            extra_instruction = (
+                "\n\nNow write the final answer or call another tool if needed.\n"
+                "Response quality rules:\n"
+                "1. For EACH summarized item, include the EXACT source date.\n"
+                "2. Prefer concise summaries with a few concrete points.\n"
+                "3. If results are weak, mixed, conflicting, or outdated, say so clearly.\n"
+                "4. Prefer format: [YYYY-MM-DD] Source - concise summary.\n"
+            )
+
+        self.messages.append(
+            {
+                "role": "user",
+                "content": "TOOL_RESULT:\n" + json.dumps(obs, ensure_ascii=False) + extra_instruction,
+            }
+        )
+
+    def _force_search_web_first(self, user_text: str) -> bool:
+        """
+        For clearly time-sensitive / news-like questions, inject an initial search_web call
+        instead of hoping the model decides to do it.
+        """
+        if not self._needs_tool_search(user_text):
+            return False
+
+        result = self._run_tool("search_web", {"query": user_text, "max_results": 5})
+        self._append_tool_result("search_web", result)
+        return True
+
+    def _rewrite_if_missing_dates_after_search(self, final_answer: str) -> str:
+        if not self._tool_result_uses_search_web():
+            return final_answer
+
+        if self._answer_has_date(final_answer):
+            return final_answer
+
+        self.messages.append(
+            {
+                "role": "user",
+                "content": (
+                    "Your previous answer did not follow the required response quality rules. "
+                    "Rewrite it now so that EACH summarized item includes the EXACT source date. "
+                    "Keep it concise. If results are weak or mixed, say so explicitly."
+                ),
+            }
+        )
+        rewritten = self._generate().strip()
+        return rewritten
 
     def chat(self, user_text: str, max_steps: int = 6, skill: str = "auto") -> str:
         chosen = self.route(user_text, forced_skill=skill)
@@ -228,24 +327,16 @@ class LocalAgent:
         if self.sandbox is None:
             return self.chat_simple(user_text)
 
+        # Optional helpful bootstrap for repo questions
         if any(k in user_text.lower() for k in ["repo", "project", "结构", "目录"]):
             forced = self.sandbox.list_dir(self.sandbox.allowed_roots[0])
-            self.messages.append(
-                {
-                    "role": "user",
-                    "content": "TOOL_RESULT:\n"
-                    + str(
-                        {
-                            "tool": "list_dir",
-                            "ok": forced.ok,
-                            "output": forced.output,
-                            "meta": forced.meta,
-                        }
-                    ),
-                }
-            )
+            self._append_tool_result("list_dir", forced)
 
         self.messages.append({"role": "user", "content": user_text})
+
+        # Force web search first for time-sensitive/current-event questions
+        self._force_search_web_first(user_text)
+
         final_answer = ""
 
         for _ in range(max_steps):
@@ -275,23 +366,20 @@ class LocalAgent:
                     {"tool": tool_name, "args": tool_args},
                 )
 
-            obs = {
-                "tool": tool_name,
-                "ok": result.ok,
-                "output": result.output,
-                "meta": result.meta,
-            }
-            self.messages.append(
-                {
-                    "role": "user",
-                    "content": "TOOL_RESULT:\n" + json.dumps(obs, ensure_ascii=False),
-                }
-            )
+            self._append_tool_result(tool_name, result)
 
             if not result.ok:
                 continue
 
         if not final_answer:
             final_answer = "Reached max_steps without a final answer."
+
+        final_answer = self._rewrite_if_missing_dates_after_search(final_answer)
+
+        # keep rewritten final answer in history
+        if not self.messages or self.messages[-1].get("role") != "assistant":
+            self.messages.append({"role": "assistant", "content": final_answer})
+        else:
+            self.messages[-1]["content"] = final_answer
 
         return final_answer
