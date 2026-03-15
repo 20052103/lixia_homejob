@@ -55,11 +55,9 @@ _BULLET_PREFIX_RE = re.compile(r"^\s*[-*•]+\s*")
 def split_ready_sentences(buffer: str) -> tuple[List[str], str]:
     if not buffer.strip():
         return [], buffer
-
     parts = _SENTENCE_RE.split(buffer)
     if len(parts) <= 1:
         return [], buffer
-
     ready = [p.strip() for p in parts[:-1] if p and p.strip()]
     tail = parts[-1] if parts else ""
     return ready, tail
@@ -95,17 +93,15 @@ def chunk_text_for_tts(text: str, max_chars: int = 220) -> List[str]:
         return []
 
     chunks: List[str] = []
-
     paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+
     for para in paragraphs:
         sentences = _SENTENCE_RE.split(para)
         buf = ""
-
         for sent in sentences:
             sent = sent.strip()
             if not sent:
                 continue
-
             if not buf:
                 buf = sent
                 continue
@@ -137,6 +133,7 @@ def chunk_text_for_tts(text: str, max_chars: int = 220) -> List[str]:
                 if buf.strip():
                     final_chunks.append(buf.strip())
                 buf = w
+
         if buf.strip():
             final_chunks.append(buf.strip())
 
@@ -165,6 +162,7 @@ class TTSWorker:
 
     def _build_ps_command(self, text: str) -> str:
         escaped = text.replace("'", "''")
+
         voice_part = ""
         if self.voice_contains:
             voice_part = (
@@ -196,7 +194,6 @@ class TTSWorker:
             "-Command",
             self._build_ps_command(text),
         ]
-
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
@@ -219,7 +216,6 @@ class TTSWorker:
                 ret = proc.poll()
                 if ret is not None:
                     break
-
                 time.sleep(0.03)
         finally:
             with self._current_proc_lock:
@@ -232,7 +228,6 @@ class TTSWorker:
             if item is None:
                 self.q.task_done()
                 return
-
             try:
                 if not self._stop.is_set():
                     self._speak_blocking(item)
@@ -413,7 +408,6 @@ class AdaptiveBargeInMonitor:
                             self._armed.clear()
                             consecutive = 0
                             break
-
         except Exception as e:
             print(f"[BARGE-IN] disabled: {e}", flush=True)
 
@@ -421,7 +415,6 @@ class AdaptiveBargeInMonitor:
 def should_accept_wake(text: str, wake_words: List[str]) -> bool:
     if not wake_words:
         return True
-
     t = text.lower()
     return any(w.strip().lower() in t for w in wake_words if w.strip())
 
@@ -431,7 +424,6 @@ def build_vad_cfg(args) -> VADConfig:
     cfg.sample_rate = 16000
     cfg.channels = 1
     cfg.dtype = "int16"
-
     cfg.rms_start_threshold = float(args.rms_start)
     cfg.rms_stop_threshold = float(args.rms_stop)
     cfg.stop_silence_seconds = float(args.silence)
@@ -490,9 +482,9 @@ def speak_full_text(
                 tts.interrupt()
                 print("\n[interrupt] user speech detected during TTS.\n", flush=True)
                 return
-            tts.speak_async(chunk)
 
-        drain_tts_with_interrupt(tts, barge, enable_barge_in)
+            tts.speak_async(chunk)
+            drain_tts_with_interrupt(tts, barge, enable_barge_in)
     finally:
         if barge is not None:
             barge.disarm()
@@ -543,7 +535,6 @@ def stream_to_tts_chat_only(
             tts.speak_async(sentence_buf.strip())
 
         drain_tts_with_interrupt(tts, barge, enable_barge_in)
-
     finally:
         if barge is not None:
             barge.disarm()
@@ -608,7 +599,7 @@ def main():
 
     # agent
     parser.add_argument("--skill", default="auto", choices=["auto", "chat", "tool"])
-    parser.add_argument("--max_steps", type=int, default=4)
+    parser.add_argument("--max_steps", type=int, default=6)
     parser.add_argument(
         "--root",
         default=str(LLM_REPO_ROOT),
@@ -673,8 +664,7 @@ def main():
             calibrate_ms=args.barge_calibrate_ms,
             debug=args.barge_debug,
         )
-        if args.speak and args.barge_in
-        else None
+        if args.speak and args.barge_in else None
     )
 
     wake_words = [w.strip() for w in args.wake_words.split(",") if w.strip()]
@@ -694,8 +684,8 @@ def main():
                     wav_path = tmp.name
 
                 vad_cfg = build_vad_cfg(args)
+                print(" Listening...", flush=True)
 
-                print("🎤 Listening...", flush=True)
                 wav_path = record_wav_auto_vad(
                     out_path=wav_path,
                     cfg=vad_cfg,
