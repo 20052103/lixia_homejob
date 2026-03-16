@@ -8,7 +8,7 @@ import os
 # ============================================================
 LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://127.0.0.1:1234/v1")
 LM_STUDIO_API_KEY = os.getenv("LM_STUDIO_API_KEY", "lm-studio")
-LM_STUDIO_MODEL_NAME = os.getenv("LM_STUDIO_MODEL_NAME", "local-model")
+LM_STUDIO_MODEL_NAME = os.getenv("LM_STUDIO_MODEL_NAME", "Qwen_Qwen3.5-27B-Q4_K_M.gguf")
 
 # ============================================================
 # Default generation params

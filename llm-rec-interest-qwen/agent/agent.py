@@ -149,40 +149,43 @@ class LocalAgent:
             },
         }
 
-    def _looks_time_sensitive(self, text: str) -> bool:
+    def _needs_search(self, text: str) -> bool:
+        """Check if web search is explicitly needed."""
         t = (text or "").lower()
         keywords = [
-            "news",
-            "latest",
-            "recent",
-            "today",
-            "current",
-            "update",
-            "updates",
-            "breaking",
-            "headline",
-            "headlines",
-            "market",
-            "stock",
-            "stocks",
-            "earnings",
-            "price",
-            "prices",
-            "war",
-            "conflict",
-            "iran",
-            "israel",
-            "ukraine",
-            "tariff",
-            "fed",
-            "google search",
-            "search",
-            "web",
+            "search",      # English "search"
+            "搜索",        # Chinese "search"
+            "news",        # "news"
         ]
         return any(k in t for k in keywords)
 
+    def _needs_file_tools(self, text: str) -> bool:
+        """Check if file/directory operations are needed."""
+        t = (text or "").lower()
+        keywords = [
+            "列出",        # Chinese "list"
+            "list",        # English "list"
+            "show",        # "show"
+            "查看",        # Chinese "view/check"
+            "找",          # Chinese "find"
+            "find",        # English "find"
+            "打开",        # Chinese "open"
+            "open",        # English "open"
+            "读取",        # Chinese "read"
+            "read",        # English "read"
+            "文件",        # Chinese "file"
+            "目录",        # Chinese "directory"
+            "结构",        # Chinese "structure"
+        ]
+        return any(k in t for k in keywords)
+
+    def _looks_time_sensitive(self, text: str) -> bool:
+        """Legacy: only for search."""
+        return self._needs_search(text)
+
     def _needs_tool_search(self, text: str) -> bool:
-        return self._looks_time_sensitive(text)
+        """Check if tool use is needed (file ops or search)."""
+        return self._needs_search(text) or self._needs_file_tools(text)
 
     def _answer_has_date(self, text: str) -> bool:
         return bool(_DATE_RE.search(text or ""))
@@ -393,7 +396,7 @@ class LocalAgent:
         )
 
     def _force_search_web_first(self, user_text: str) -> bool:
-        if not self._needs_tool_search(user_text):
+        if not self._needs_search(user_text):  # Only search when explicitly needed
             return False
 
         result = self._run_tool("search_web", {"query": user_text, "max_results": 5})

@@ -81,3 +81,17 @@ agent/
 ├── voice_agent_pipeline.py # Voice agent CLI
 └── README.md               # This file
 ```
+
+### Telegram Remote Control
+
+1. Create a `.env` file at repo root:
+   - `TELEGRAM_BOT_TOKEN`
+   - `AUTHORIZED_CHAT_ID`
+   - `TELEGRAM_MAX_STEPS`
+   - `TELEGRAM_SKILL`
+   - `TELEGRAM_ROOT`
+
+2. Install dependencies:
+
+```bash
+pip install python-telegram-bot python-dotenv
