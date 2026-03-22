@@ -105,12 +105,26 @@ class LocalAgent:
             out.append({"role": role, "content": str(content)})
         return out
 
+    def _prune_old_messages(self, max_recent_pairs: int = 8) -> None:
+        """
+        Keep only the most recent message pairs (user+assistant) to avoid exceeding context limit.
+        With max_recent_pairs=8, keeps last 16 messages (8 user + 8 assistant).
+        """
+        if len(self.messages) <= max_recent_pairs * 2:
+            return
+        
+        # Keep the most recent N pairs
+        self.messages = self.messages[-(max_recent_pairs * 2):]
+
     def _build_messages(
         self,
         *,
         base_system_prompt: str,
         extra_messages: Optional[List[Dict[str, str]]] = None,
     ) -> List[Dict[str, str]]:
+        # Prune old messages to prevent context overflow
+        self._prune_old_messages(max_recent_pairs=8)
+        
         final_messages: List[Dict[str, str]] = []
 
         merged_system = self._merge_system_prompt(base_system_prompt)
