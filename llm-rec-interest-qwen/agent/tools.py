@@ -20,6 +20,8 @@ try:
         WEB_SEARCH_PROVIDER,
         WEB_SEARCH_TIMEOUT_SEC,
         WEB_SEARCH_USER_AGENT,
+        GMAIL_CREDENTIALS_PATH,
+        GMAIL_TOKEN_PATH,
     )
 except ImportError:
     from config import (
@@ -28,6 +30,8 @@ except ImportError:
         WEB_SEARCH_PROVIDER,
         WEB_SEARCH_TIMEOUT_SEC,
         WEB_SEARCH_USER_AGENT,
+        GMAIL_CREDENTIALS_PATH,
+        GMAIL_TOKEN_PATH,
     )
 
 
@@ -286,3 +290,40 @@ class ToolSandbox:
             traceback.print_exc()
 
             return ToolResult(False, str(e), {"query": q})
+
+    # ----------------------------------------------------------
+    # Gmail tool
+    # ----------------------------------------------------------
+
+    def fetch_gmail(
+        self,
+        query: str = "is:unread",
+        max_results: int = 10,
+        include_body: bool = True,
+    ) -> ToolResult:
+        """Fetch emails from Gmail using the Gmail API (OAuth2)."""
+        try:
+            try:
+                from .gmail_tool import fetch_emails_as_text
+            except ImportError:
+                from gmail_tool import fetch_emails_as_text
+
+            print(f"[fetch_gmail] query={query!r} max_results={max_results} include_body={include_body}")
+
+            text = fetch_emails_as_text(
+                query=query,
+                max_results=max_results,
+                include_body=include_body,
+                credentials_path=GMAIL_CREDENTIALS_PATH,
+                token_path=GMAIL_TOKEN_PATH,
+            )
+
+            return ToolResult(True, text, {"query": query, "max_results": max_results})
+
+        except FileNotFoundError as e:
+            return ToolResult(False, str(e), {"query": query})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {"query": query})

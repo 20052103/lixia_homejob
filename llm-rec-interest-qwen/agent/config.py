@@ -35,3 +35,18 @@ WEB_SEARCH_USER_AGENT = os.getenv(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
 )
+
+# ============================================================
+# Gmail API config
+# credentials.json: download from Google Cloud Console
+# gmail_token.json: auto-created after first OAuth consent
+# ============================================================
+_AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+GMAIL_CREDENTIALS_PATH = os.getenv(
+    "GMAIL_CREDENTIALS_PATH",
+    os.path.join(_AGENT_DIR, "credentials.json"),
+)
+GMAIL_TOKEN_PATH = os.getenv(
+    "GMAIL_TOKEN_PATH",
+    os.path.join(_AGENT_DIR, "gmail_token.json"),
+)

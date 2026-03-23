@@ -197,9 +197,19 @@ class LocalAgent:
         """Legacy: only for search."""
         return self._needs_search(text)
 
+    def _needs_gmail(self, text: str) -> bool:
+        """Check if Gmail fetching is needed."""
+        t = (text or "").lower()
+        keywords = [
+            "邮件", "邮箱", "收件箱", "未读",   # Chinese email keywords
+            "gmail", "email", "mail", "inbox", "unread",  # English
+            "总结邮件", "查邮件", "看邮件",       # Chinese phrases
+        ]
+        return any(k in t for k in keywords)
+
     def _needs_tool_search(self, text: str) -> bool:
-        """Check if tool use is needed (file ops or search)."""
-        return self._needs_search(text) or self._needs_file_tools(text)
+        """Check if tool use is needed (file ops, search, or gmail)."""
+        return self._needs_search(text) or self._needs_file_tools(text) or self._needs_gmail(text)
 
     def _answer_has_date(self, text: str) -> bool:
         return bool(_DATE_RE.search(text or ""))
@@ -377,6 +387,15 @@ class LocalAgent:
             return self.sandbox.search_web(
                 query=str(args.get("query", "")),
                 max_results=int(args.get("max_results", 5)),
+            )
+
+        if tool == "fetch_gmail":
+            if not hasattr(self.sandbox, "fetch_gmail"):
+                return ToolResult(False, "fetch_gmail is not implemented in ToolSandbox.", {"tool": tool})
+            return self.sandbox.fetch_gmail(
+                query=str(args.get("query", "is:unread")),
+                max_results=int(args.get("max_results", 10)),
+                include_body=bool(args.get("include_body", True)),
             )
 
         return ToolResult(False, f"Unknown tool: {tool}", {"tool": tool})
