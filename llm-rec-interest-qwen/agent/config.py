@@ -50,3 +50,33 @@ GMAIL_TOKEN_PATH = os.getenv(
     "GMAIL_TOKEN_PATH",
     os.path.join(_AGENT_DIR, "gmail_token.json"),
 )
+
+# ============================================================
+# Google Calendar API config
+# Reuses credentials.json from Gmail setup.
+# gcal_token.json is separate so Gmail auth is unaffected.
+# Enable "Google Calendar API" in Cloud Console if not already.
+# ============================================================
+GCAL_CREDENTIALS_PATH = os.getenv(
+    "GCAL_CREDENTIALS_PATH",
+    os.path.join(_AGENT_DIR, "credentials.json"),
+)
+GCAL_TOKEN_PATH = os.getenv(
+    "GCAL_TOKEN_PATH",
+    os.path.join(_AGENT_DIR, "gcal_token.json"),
+)
+
+# ============================================================
+# Google Drive API config
+# Reuses credentials.json from Gmail setup.
+# gdrive_token.json is separate so other tokens are unaffected.
+# Enable "Google Drive API" in Cloud Console if not already.
+# ============================================================
+GDRIVE_CREDENTIALS_PATH = os.getenv(
+    "GDRIVE_CREDENTIALS_PATH",
+    os.path.join(_AGENT_DIR, "credentials.json"),
+)
+GDRIVE_TOKEN_PATH = os.getenv(
+    "GDRIVE_TOKEN_PATH",
+    os.path.join(_AGENT_DIR, "gdrive_token.json"),
+)

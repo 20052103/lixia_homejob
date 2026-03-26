@@ -18,6 +18,7 @@ Local AI agent powered by Qwen3.5 with LM Studio support.
 | `analyze_ics` | 日历、日程、calendar… | Parse and summarize `.ics` calendar files |
 | `fetch_url` | URL provided | Fetch and read a web page |
 | `fetch_gmail` | 邮件、邮箱、Gmail、email… | **Fetch & filter Gmail inbox** (see below) |
+| `send_gmail` | 发邮件、写信、send email… | **Compose, confirm, and send Gmail** (see below) |
 
 ---
 
@@ -93,12 +94,78 @@ The agent passes queries directly to the Gmail API search engine:
 | `subject:invoice newer_than:7d` | Subject keyword + date filter |
 | `is:unread newer_than:1d` | Today's unread emails |
 
-### Configuration (optional overrides in `.env`)
+### VIP Contacts
+
+VIP contacts are stored in `agent/contacts.json` and get special treatment every time emails are checked:
+
+- Their emails are **always fetched separately** (last 7 days), regardless of the main query
+- They are shown at the **top of every email report** under `⭐ VIP Contact Emails`
+- They **bypass the spam/promo filter** — their emails are never silently dropped
+
+**Current VIP contacts** (`agent/contacts.json`):
+
+```json
+{
+  "vip_contacts": [
+    { "name": "Lin Yang", "email": "lynn69688@gmail.com" }
+  ]
+}
+```
+
+To add more contacts, edit `contacts.json` directly:
+
+```json
+{ "name": "Another Person", "email": "another@example.com" }
+```
+
+> ✅ **`send_gmail` is now available** — see the Send Email section below.
 
 ```env
 GMAIL_CREDENTIALS_PATH=D:\path\to\credentials.json
 GMAIL_TOKEN_PATH=D:\path\to\gmail_token.json
 ```
+
+---
+
+### Send Email
+
+The agent composes, polishes, and sends emails via Gmail. It always follows a **draft → confirm → send** flow — it will never send without your explicit approval.
+
+#### Usage Examples
+
+```
+给 Lin Yang 发邮件，说我明天下午不能来了
+发邮件给 lynn69688@gmail.com，问一下会议是否改期
+Send an email to Lin Yang asking about the project deadline
+Write to lynn69688@gmail.com: are we still meeting tomorrow?
+```
+
+#### Draft-Confirm Flow
+
+```
+You:   给 Lin Yang 发邮件，说周五的会议我要迟到20分钟
+
+Agent: ---
+       To      : Lin Yang <lynn69688@gmail.com>
+       Subject : 关于周五会议
+       Body    :
+       Hi Yang, 周五的会议我会晚到大约20分钟，请见谅。
+       ---
+       请确认发送，或告诉我需要修改的地方。
+
+You:   确认发送
+
+Agent: ✅ Email sent successfully to lynn69688@gmail.com
+```
+
+#### Recipient Resolution
+
+| What you type | Resolved to |
+|---|---|
+| `lynn69688@gmail.com` | used directly |
+| `Lin Yang` | looked up in `contacts.json` → `lynn69688@gmail.com` |
+
+> ⚠️ **Re-authorization required on first send**: Sending requires an additional OAuth scope. Delete `agent/gmail_token.json` and re-run the agent once to re-authorize with both read + send permissions.
 
 ---
 
@@ -174,6 +241,8 @@ agent/
 ├── prompts.py              # System prompts & tool schemas
 ├── tools.py                # Tool sandbox & implementations
 ├── gmail_tool.py           # Gmail API OAuth2 + smart email filtering
+├── contacts.py             # VIP contact list manager
+├── contacts.json           # VIP contacts data (name + email)
 ├── run_agent.py            # Text agent CLI
 ├── voice_agent_pipeline.py # Voice agent CLI
 └── README.md               # This file
