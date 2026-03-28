@@ -107,6 +107,8 @@ Do not add any text before or after the JSON line.
 - reply_gmail
 - discover_vip_contacts
 - fetch_stock
+- fetch_market
+- read_image
 
 ## Tool argument schemas
 
@@ -163,6 +165,14 @@ Description: Fetch near-realtime stock quotes and recent news. Supports one or m
 {"tool":"fetch_stock","args":{"tickers":"AAPL","include_news":true}}
 {"tool":"fetch_stock","args":{"tickers":"AAPL,MSFT,TSLA","include_news":true}}
 
+fetch_market
+Description: Fetch a full market overview — major indices, sector ETF performance, tech mega-caps, top daily gainers/losers, and watchlist alerts.
+{"tool":"fetch_market","args":{}}
+
+read_image
+Description: Open a GUI dialog so the user can paste an image from clipboard or browse a file, then describe/transcribe it.
+{"tool":"read_image","args":{"prompt":"Describe this image in detail. If it contains text, transcribe it fully."}}
+
 ## fetch_gmail query examples
 - "is:unread"                        → all unread emails
 - "newer_than:1d"                    → emails from the last 24 hours (may include yesterday)
@@ -188,13 +198,15 @@ Description: Fetch near-realtime stock quotes and recent news. Supports one or m
 - For email/inbox/Gmail questions: use fetch_gmail.
 - For sending a new email: follow the STRICT draft-confirm protocol (call draft_gmail).
 - For replying to an email by ID (e.g. "reply to E2"): call reply_gmail with the email_id and body.
-- For stock prices, quotes, market data, or news: use fetch_stock with the ticker(s).
+- For a broad market overview (indices, sectors, gainers/losers): use fetch_market.
+- For stock prices, quotes, market data, or news on specific tickers: use fetch_stock with the ticker(s).
+- For reading/describing/OCR-ing an image, photo, or screenshot: use read_image (a GUI picker will appear).
 - For discovering/updating VIP contacts from sent history: call discover_vip_contacts.
 - Prefer read_file/list_dir before run_cmd for local inspection.
 - Never invent local file paths. Navigate from the allowed root if needed.
 
 Allowed filesystem root is:
-D:\\repo\\lixia_homejob\\llm-rec-interest-qwen
+D:\\repo\\lixia_homejob
 
 You MUST ONLY use paths under this root for filesystem tools.
 

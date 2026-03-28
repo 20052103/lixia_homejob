@@ -1,0 +1,68 @@
+{
+  "holdings": [
+    {
+      "ticker": "META",
+      "shares": 60
+    },
+    {
+      "ticker": "PLTR",
+      "shares": 220
+    },
+    {
+      "ticker": "TSLA",
+      "shares": 95
+    },
+    {
+      "ticker": "NVDA",
+      "shares": 180
+    },
+    {
+      "ticker": "AMD",
+      "shares": 110
+    },
+    {
+      "ticker": "GOOGL",
+      "shares": 110
+    },
+    {
+      "ticker": "AMZN",
+      "shares": 120
+    },
+    {
+      "ticker": "SHOP",
+      "shares": 249
+    },
+    {
+      "ticker": "APLD",
+      "shares": 300
+    },
+    {
+      "ticker": "UNH",
+      "shares": 21
+    },
+    {
+      "ticker": "SNAP",
+      "shares": 2600
+    },
+    {
+      "ticker": "GLD",
+      "shares": 30
+    },
+    {
+      "ticker": "CPNG",
+      "shares": 500
+    },
+    {
+      "ticker": "DXYZ",
+      "shares": 1
+    },
+    {
+      "ticker": "ADD",
+      "shares": 0
+    }
+  ],
+  "alert_thresholds": {
+    "big_move_pct": 3.0,
+    "huge_move_pct": 6.0
+  }
+}

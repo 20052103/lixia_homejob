@@ -353,3 +353,261 @@ def fetch_stock_summary(tickers: List[str], include_news: bool = True) -> str:
                     parts.append(f"    • {date}{item['headline']}")
 
     return "\n\n".join(parts)
+
+
+# ============================================================
+# Market Overview
+# ============================================================
+
+_INDICES = [
+    ("^GSPC",  "S&P 500"),
+    ("^IXIC",  "Nasdaq"),
+    ("^DJI",   "Dow Jones"),
+    ("^RUT",   "Russell 2000"),
+]
+
+_TECH_MEGA_CAPS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "NFLX"]
+
+_SECTORS = [
+    ("XLK",  "Tech"),
+    ("XLV",  "Healthcare"),
+    ("XLE",  "Energy"),
+    ("XLF",  "Financials"),
+    ("XLI",  "Industrials"),
+    ("XLY",  "Consumer Disc"),
+    ("XLP",  "Consumer Staples"),
+    ("XLU",  "Utilities"),
+    ("XLB",  "Materials"),
+    ("XLRE", "Real Estate"),
+    ("XLC",  "Comm Services"),
+]
+
+
+def _yf_quick(symbol: str) -> Optional[dict]:
+    """Lightweight yfinance fetch — price + change% only."""
+    try:
+        import yfinance as yf
+        info = yf.Ticker(symbol).info
+        price = info.get("regularMarketPrice") or info.get("currentPrice")
+        chg_pct = info.get("regularMarketChangePercent")
+        if price is None:
+            return None
+        return {"symbol": symbol, "price": price, "change_pct": chg_pct}
+    except Exception:
+        return None
+
+
+def _finnhub_quick(symbol: str) -> Optional[dict]:
+    """Lightweight Finnhub fetch — price + change% only."""
+    if not FINNHUB_API_KEY:
+        return None
+    try:
+        r = requests.get(
+            "https://finnhub.io/api/v1/quote",
+            params={"symbol": symbol, "token": FINNHUB_API_KEY},
+            timeout=_TIMEOUT,
+        )
+        r.raise_for_status()
+        d = r.json()
+        if not d.get("c"):
+            return None
+        return {"symbol": symbol, "price": d["c"], "change_pct": d.get("dp")}
+    except Exception:
+        return None
+
+
+def _quick_quote(symbol: str) -> Optional[dict]:
+    return _finnhub_quick(symbol) or _yf_quick(symbol)
+
+
+def _fmt_row(symbol: str, name: str, data: Optional[dict]) -> str:
+    if data is None:
+        return f"  {name:<20} N/A"
+    price = _fmt_price(data["price"])
+    pct = data.get("change_pct")
+    if pct is not None:
+        arrow = "▲" if float(pct) >= 0 else "▼"
+        pct_str = f"{arrow} {_fmt_pct(pct)}"
+    else:
+        pct_str = ""
+    return f"  {name:<20} {price:>10}  {pct_str}"
+
+
+def _fetch_movers(n: int = 5):
+    """Fetch top gainers and losers of the day via yfinance screener."""
+    try:
+        import yfinance as yf
+        gainers_raw = yf.screen("day_gainers", count=n).get("quotes", [])
+        losers_raw  = yf.screen("day_losers",  count=n).get("quotes", [])
+        gainers = [
+            {"symbol": q["symbol"], "change_pct": q.get("regularMarketChangePercent", 0)}
+            for q in gainers_raw[:n]
+        ]
+        losers = [
+            {"symbol": q["symbol"], "change_pct": q.get("regularMarketChangePercent", 0)}
+            for q in losers_raw[:n]
+        ]
+        return gainers, losers
+    except Exception:
+        return [], []
+
+
+def fetch_market_overview() -> str:
+    """
+    Return a formatted market overview:
+    - Major indices (S&P 500, Nasdaq, Dow, Russell)
+    - Sector ETF performance (XLK, XLV, XLE, ...)
+    - Tech mega-cap snapshot (AAPL, MSFT, NVDA, ...)
+    - Top 5 day gainers and losers
+    """
+    today = _dt.date.today().strftime("%Y-%m-%d")
+    lines = [f"📊 Market Overview — {today}", ""]
+
+    # 1. Major Indices
+    lines.append("## 📈 Major Indices")
+    for sym, name in _INDICES:
+        data = _quick_quote(sym)
+        lines.append(_fmt_row(sym, name, data))
+    lines.append("")
+
+    # 2. Sector Performance
+    lines.append("## 🏭 Sector ETFs")
+    sector_data = []
+    for sym, name in _SECTORS:
+        data = _quick_quote(sym)
+        sector_data.append((sym, name, data))
+        lines.append(_fmt_row(sym, name, data))
+    lines.append("")
+
+    # Best/worst sector
+    valid_sectors = [(s, n, d) for s, n, d in sector_data if d and d.get("change_pct") is not None]
+    if valid_sectors:
+        best  = max(valid_sectors, key=lambda x: float(x[2]["change_pct"]))
+        worst = min(valid_sectors, key=lambda x: float(x[2]["change_pct"]))
+        lines.append(f"  🟢 Best sector:  {best[1]} ({_fmt_pct(best[2]['change_pct'])})")
+        lines.append(f"  🔴 Worst sector: {worst[1]} ({_fmt_pct(worst[2]['change_pct'])})")
+        lines.append("")
+
+    # 3. Tech Mega-Caps
+    lines.append("## 💻 Tech Mega-Caps")
+    for sym in _TECH_MEGA_CAPS:
+        data = _quick_quote(sym)
+        lines.append(_fmt_row(sym, sym, data))
+    lines.append("")
+
+    # 4. Top Movers
+    gainers, losers = _fetch_movers(n=5)
+    if gainers:
+        lines.append("## 🚀 Top Gainers Today")
+        for g in gainers:
+            lines.append(f"  {g['symbol']:<8} {_fmt_pct(g['change_pct'])}")
+        lines.append("")
+    if losers:
+        lines.append("## 📉 Top Losers Today")
+        for l in losers:
+            lines.append(f"  {l['symbol']:<8} {_fmt_pct(l['change_pct'])}")
+        lines.append("")
+
+    # 5. Watchlist alerts
+    watchlist, big_move, huge_move = _load_watchlist()
+    if watchlist:
+        alerts = []
+        news_tickers = []
+        for ticker in watchlist:
+            data = _quick_quote(ticker)
+            if data is None:
+                continue
+            chg_pct = data.get("change_pct")
+            if chg_pct is None:
+                continue
+            abs_pct = abs(float(chg_pct))
+            if abs_pct >= huge_move:
+                icon = "🚨"
+                news_tickers.append(ticker)
+            elif abs_pct >= big_move:
+                icon = "⚠️"
+                news_tickers.append(ticker)
+            else:
+                continue
+            direction = "up" if float(chg_pct) >= 0 else "down"
+            alerts.append(f"  {icon} {ticker:<6} {direction} {_fmt_pct(chg_pct)}")
+
+        if alerts:
+            lines.append("## 👁️ Watchlist Alerts")
+            lines.extend(alerts)
+            lines.append("")
+
+        if news_tickers:
+            lines.append("## 📰 News for Watchlist Movers")
+            for ticker in news_tickers[:5]:
+                news = fetch_news(ticker, n=2)
+                if news:
+                    lines.append(f"\n  {ticker}:")
+                    for item in news:
+                        date = f"[{item['date']}] " if item.get("date") else ""
+                        lines.append(f"    • {date}{item['headline']}")
+            lines.append("")
+
+    lines.append("[sources: finnhub (stocks) + yfinance (indices/sectors/movers)]")
+    return "\n".join(lines)
+
+
+# ============================================================
+# Watchlist helpers (used inside fetch_market_overview)
+# ============================================================
+
+import json as _json
+import os as _os
+
+_PORTFOLIO_PATH = _os.path.join(_os.path.dirname(__file__), "portfolio.json")
+
+
+def _load_watchlist() -> list:
+    """Return list of ticker strings from portfolio.json."""
+    try:
+        with open(_PORTFOLIO_PATH, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        thresholds = data.get("alert_thresholds", {})
+        tickers = [h["ticker"].upper() for h in data.get("holdings", [])]
+        return tickers, float(thresholds.get("big_move_pct", 3.0)), float(thresholds.get("huge_move_pct", 6.0))
+    except FileNotFoundError:
+        return [], 3.0, 6.0
+
+
+def add_to_watchlist(ticker: str) -> str:
+    """Add a ticker to portfolio.json watchlist. Returns confirmation message."""
+    ticker = ticker.strip().upper()
+    try:
+        with open(_PORTFOLIO_PATH, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+    except FileNotFoundError:
+        data = {"holdings": [], "alert_thresholds": {"big_move_pct": 3.0, "huge_move_pct": 6.0}}
+
+    existing = [h["ticker"].upper() for h in data.get("holdings", [])]
+    if ticker in existing:
+        return f"👁️ {ticker} is already in your watchlist."
+
+    data.setdefault("holdings", []).append({"ticker": ticker, "shares": 0})
+    with open(_PORTFOLIO_PATH, "w", encoding="utf-8") as f:
+        _json.dump(data, f, indent=2)
+    return f"✅ Added {ticker} to your watchlist. It will now appear in market summaries if it makes a big move."
+
+
+def remove_from_watchlist(ticker: str) -> str:
+    """Remove a ticker from portfolio.json watchlist. Returns confirmation message."""
+    ticker = ticker.strip().upper()
+    try:
+        with open(_PORTFOLIO_PATH, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+    except FileNotFoundError:
+        return f"⚠️ Watchlist file not found."
+
+    before = len(data.get("holdings", []))
+    data["holdings"] = [h for h in data.get("holdings", []) if h["ticker"].upper() != ticker]
+    if len(data["holdings"]) == before:
+        return f"⚠️ {ticker} was not found in your watchlist."
+
+    with open(_PORTFOLIO_PATH, "w", encoding="utf-8") as f:
+        _json.dump(data, f, indent=2)
+    return f"🗑️ Removed {ticker} from your watchlist."
+

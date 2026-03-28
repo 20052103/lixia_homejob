@@ -528,6 +528,43 @@ class ToolSandbox:
             traceback.print_exc()
             return ToolResult(False, str(e), {"tickers": tickers})
 
+    def fetch_market(self) -> ToolResult:
+        """Fetch a full market overview: indices, sectors, tech mega-caps, top movers."""
+        try:
+            try:
+                from .stock_tool import fetch_market_overview
+            except ImportError:
+                from stock_tool import fetch_market_overview
+            print("[fetch_market] fetching market overview...")
+            text = fetch_market_overview()
+            return ToolResult(True, text, {})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {})
+
+    def read_image(self, prompt: str = "Describe this image in detail. If it contains text, transcribe it fully.") -> ToolResult:
+        """Open GUI dialog to capture an image from clipboard or file, then describe it."""
+        try:
+            try:
+                from .image_tool import read_image_interactive
+                from .config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, LM_STUDIO_MODEL_NAME
+            except ImportError:
+                from image_tool import read_image_interactive
+                from config import LM_STUDIO_BASE_URL, LM_STUDIO_API_KEY, LM_STUDIO_MODEL_NAME
+
+            result = read_image_interactive(
+                prompt=prompt,
+                base_url=LM_STUDIO_BASE_URL,
+                api_key=LM_STUDIO_API_KEY,
+                model=LM_STUDIO_MODEL_NAME,
+            )
+            return ToolResult(True, result, {})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {})
+
     def discover_vip_contacts(self, days: int = 150, auto_add: bool = True) -> ToolResult:
         """
         Scan the Sent box for the last `days` days, extract recipients and greeting names,

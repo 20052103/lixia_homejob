@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--root",
         type=str,
-        default=r"D:\repo",
+        default=r"D:\repo\lixia_homejob",
         help="Allowed filesystem root for tools (sandbox).",
     )
     args = parser.parse_args()

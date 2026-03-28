@@ -449,14 +449,109 @@ class LocalAgent:
             "stock", "stocks", "share price", "market cap",
             "ticker", "nasdaq", "nyse", "s&p", "dow jones",
             "price of", "how is", "how's",
+            "market", "markets", "行情", "大盘", "指数",
             "aapl", "msft", "tsla", "googl", "amzn", "nvda", "meta", "nflx",
-            "股票", "股价", "市值", "涨跌", "行情", "大盘",
+            "股票", "股价", "市值", "涨跌",
             "earnings", "pe ratio", "52 week",
+            "gainers", "losers", "movers", "sector",
+        ]
+        return any(k in t for k in keywords)
+
+    def _needs_market_overview(self, text: str) -> bool:
+        """Check if a broad market overview (not a single stock) is needed."""
+        t = (text or "").lower()
+        keywords = [
+            "market today", "market overview", "how is the market",
+            "how are markets", "market summary", "market recap",
+            "今天市场", "今天行情", "大盘怎么样", "市场怎么样",
+            "市场行情", "今天大盘", "行情总结",
+            "overall market", "whole market", "broad market",
+            "top gainers", "top losers", "sector performance",
+            "板块", "涨幅榜", "跌幅榜",
+        ]
+        return any(k in t for k in keywords)
+
+    def _needs_portfolio(self, text: str) -> bool:
+        return False  # portfolio merged into market summary watchlist
+
+    def _needs_watchlist_change(self, text: str) -> tuple:
+        """
+        Detect 'add to watchlist' or 'remove from watchlist' intent.
+        Returns ('add', ticker), ('remove', ticker), or (None, None).
+        """
+        import re as _re
+        t = text.strip()
+        t_lower = t.lower()
+
+        _NAME_TO_TICKER = {
+            "apple": "AAPL", "microsoft": "MSFT", "tesla": "TSLA",
+            "google": "GOOGL", "alphabet": "GOOGL", "amazon": "AMZN",
+            "nvidia": "NVDA", "meta": "META", "facebook": "META",
+            "netflix": "NFLX", "amd": "AMD", "intel": "INTC",
+            "oracle": "ORCL", "salesforce": "CRM", "uber": "UBER",
+            "lyft": "LYFT", "shopify": "SHOP", "spotify": "SPOT",
+            "alibaba": "BABA", "tsmc": "TSM", "palantir": "PLTR",
+            "snowflake": "SNOW", "coinbase": "COIN", "airbnb": "ABNB",
+            "snapchat": "SNAP", "snap": "SNAP", "amd": "AMD",
+            "applied digital": "APLD", "united health": "UNH",
+            "unitedhealth": "UNH", "gold": "GLD", "coupang": "CPNG",
+        }
+
+        add_phrases = [
+            "add", "watch", "keep an eye", "keep eye", "monitor",
+            "track", "follow", "put on watchlist", "add to watchlist",
+            "加入", "关注", "盯着", "监控",
+        ]
+        remove_phrases = [
+            "remove", "unwatch", "stop watching", "stop tracking",
+            "delete from watchlist", "remove from watchlist",
+            "取消关注", "移除",
+        ]
+
+        def _extract_ticker(text_fragment: str) -> str | None:
+            frag_lower = text_fragment.lower()
+            for name, ticker in _NAME_TO_TICKER.items():
+                if name in frag_lower:
+                    return ticker
+            # Look for bare uppercase ticker symbol (1-5 letters)
+            m = _re.search(r'\b([A-Z]{1,5})\b', text_fragment.upper())
+            if m:
+                return m.group(1)
+            return None
+
+        # Check remove first (more specific)
+        for phrase in remove_phrases:
+            if phrase in t_lower:
+                ticker = _extract_ticker(t)
+                if ticker:
+                    return ("remove", ticker)
+
+        for phrase in add_phrases:
+            if phrase in t_lower:
+                # Make sure it looks like a stock request, not a calendar/email add
+                if any(k in t_lower for k in ["watchlist", "watch list", "watch", "eye", "monitor",
+                                               "track", "follow", "关注", "盯", "监控"]):
+                    ticker = _extract_ticker(t)
+                    if ticker:
+                        return ("add", ticker)
+
+        return (None, None)
+
+    def _needs_image(self, text: str) -> bool:
+        """Check if image reading is requested."""
+        t = (text or "").lower()
+        keywords = [
+            "read image", "read picture", "read screenshot", "read photo",
+            "看图", "读图", "看截图", "读截图", "看照片",
+            "describe image", "describe picture", "describe screenshot",
+            "what's in this image", "what is in this picture",
+            "analyze image", "analyse image", "ocr",
+            "show me", "read this image", "read this picture",
         ]
         return any(k in t for k in keywords)
 
     def _needs_tool_search(self, text: str) -> bool:
-        """Check if tool use is needed (file ops, search, gmail, calendar, drive, or stock)."""
+        """Check if tool use is needed (file ops, search, gmail, calendar, drive, stock, or image)."""
         return (
             self._needs_search(text)
             or self._needs_file_tools(text)
@@ -464,6 +559,7 @@ class LocalAgent:
             or self._needs_calendar(text)
             or self._needs_drive(text)
             or self._needs_stock(text)
+            or self._needs_image(text)
         )
 
     def _needs_drive(self, text: str) -> bool:
@@ -870,6 +966,21 @@ class LocalAgent:
                 include_news=bool(args.get("include_news", True)),
             )
 
+        if tool == "fetch_market":
+            if not hasattr(self.sandbox, "fetch_market"):
+                return ToolResult(False, "fetch_market is not implemented.", {"tool": tool})
+            return self.sandbox.fetch_market()
+
+        if tool == "fetch_portfolio":
+            if not hasattr(self.sandbox, "fetch_portfolio"):
+                return ToolResult(False, "fetch_portfolio is not implemented.", {"tool": tool})
+            return self.sandbox.fetch_portfolio()
+
+        if tool == "read_image":
+            if not hasattr(self.sandbox, "read_image"):
+                return ToolResult(False, "read_image is not implemented.", {"tool": tool})
+            return self.sandbox.read_image(prompt=str(args.get("prompt", "Describe this image in detail.")))
+
         return ToolResult(False, f"Unknown tool: {tool}", {"tool": tool})
 
     def _append_tool_result(self, tool_name: str, result: ToolResult) -> None:
@@ -905,6 +1016,13 @@ class LocalAgent:
                 "Show price, change %, and key stats. Include news headlines with dates. "
                 "IMPORTANT: Always include the data source line exactly as shown (e.g. '[source: finnhub]') — the user wants to know where the data came from. "
                 "Ground your answer only in the TOOL_RESULT — do not add prices or facts from memory."
+            )
+        if tool_name == "fetch_market":
+            extra_instruction = (
+                "\n\nPresent the full market overview clearly. "
+                "Include: indices with % change, best/worst sectors, tech mega-cap snapshot, top gainers and losers. "
+                "Always show the data source line at the end. "
+                "Ground your answer only in the TOOL_RESULT — do not add numbers from memory."
             )
         if tool_name == "send_gmail":
             if result.ok:
@@ -984,6 +1102,69 @@ class LocalAgent:
         if auto_cal is not None:
             return auto_cal
 
+        # Intercept watchlist add/remove — handle immediately without LLM tool loop
+        wl_action, wl_ticker = self._needs_watchlist_change(user_text)
+        if wl_action and wl_ticker:
+            try:
+                try:
+                    from .stock_tool import add_to_watchlist, remove_from_watchlist
+                except ImportError:
+                    from stock_tool import add_to_watchlist, remove_from_watchlist
+                if wl_action == "add":
+                    reply = add_to_watchlist(wl_ticker)
+                else:
+                    reply = remove_from_watchlist(wl_ticker)
+            except Exception as e:
+                reply = f"❌ Could not update watchlist: {e}"
+            self.messages.append({"role": "user", "content": user_text})
+            self.messages.append({"role": "assistant", "content": reply})
+            return reply
+
+        # Intercept image reading — open GUI dialog, then describe via vision/OCR
+        if self._needs_image(user_text) and self.sandbox is not None:
+            print("[agent] Image read requested — opening picker dialog...")
+            result = self.sandbox.read_image(prompt=(
+                "Describe this image in detail. "
+                "If it contains text (screenshot, document, code), transcribe it fully. "
+                "If it's a chart or diagram, describe the data and layout."
+            ))
+            description = result.output
+            self.messages.append({"role": "user", "content": user_text})
+            self.messages.append({
+                "role": "user",
+                "content": (
+                    f"IMAGE_CONTENT:\n{description}\n\n"
+                    "Based on the IMAGE_CONTENT above, answer the user's original request: "
+                    f"'{user_text}'. Summarize or explain what you found in the image."
+                ),
+            })
+            reply = self._generate().strip()
+            full_reply = description + "\n\n---\n" + reply if reply else description
+            self.messages.append({"role": "assistant", "content": full_reply})
+            return full_reply
+
+        # Intercept market overview — show raw data + ask LLM for reasoning
+        if self._needs_market_overview(user_text) and self.sandbox is not None:
+            result = self.sandbox.fetch_market()
+            if not result.ok:
+                return f"❌ Market data unavailable: {result.output}"
+            raw_data = result.output
+            # Ask LLM to reason about the data — data is injected directly so it can't be lost
+            self.messages.append({"role": "user", "content": user_text})
+            self.messages.append({
+                "role": "user",
+                "content": (
+                    f"MARKET_DATA:\n{raw_data}\n\n"
+                    "Based on the MARKET_DATA above, provide a brief analyst-style commentary: "
+                    "What is the overall market mood today? Any notable sector rotation? "
+                    "What stands out among the top gainers/losers? Keep it concise (3-5 sentences). "
+                    "Do NOT repeat all the numbers — just highlight the key takeaways."
+                ),
+            })
+            commentary = self._generate().strip()
+            self.messages.append({"role": "assistant", "content": raw_data + "\n\n---\n" + commentary})
+            return raw_data + "\n\n---\n" + commentary
+
         # Intercept "reply E1 / 回复 E2" — extract ID and body, call reply_gmail directly
         auto_draft = self._try_auto_reply_draft(user_text)
         if auto_draft is not None:
@@ -1017,9 +1198,12 @@ class LocalAgent:
 
         self.messages.append({"role": "user", "content": user_text})
 
-        # For stock queries: call fetch_stock immediately rather than letting
-        # the LLM fall back to search_web.
-        if self._needs_stock(user_text) and self.sandbox is not None:
+        # For market overview queries: call fetch_market immediately
+        if self._needs_market_overview(user_text) and self.sandbox is not None:
+            result = self.sandbox.fetch_market()
+            self._append_tool_result("fetch_market", result)
+        # For single/multi stock queries: call fetch_stock immediately
+        elif self._needs_stock(user_text) and self.sandbox is not None:
             import re as _re
             # Company name → ticker map
             _NAME_TO_TICKER = {
@@ -1037,11 +1221,9 @@ class LocalAgent:
                               "SPOT","BABA","TSM","PLTR","SNOW","COIN","ABNB","SPY","QQQ"}
             t_lower = user_text.lower()
             found = []
-            # 1. Match by company name
             for name, ticker in _NAME_TO_TICKER.items():
                 if name in t_lower and ticker not in found:
                     found.append(ticker)
-            # 2. Match explicit known tickers (ALL CAPS word match)
             for ticker in _KNOWN_TICKERS:
                 if _re.search(rf'\b{ticker}\b', user_text.upper()) and ticker not in found:
                     found.append(ticker)
@@ -1051,7 +1233,6 @@ class LocalAgent:
                     include_news=True,
                 )
                 self._append_tool_result("fetch_stock", result)
-            # If no tickers recognised, let the LLM handle it with fetch_stock tool call
         else:
             self._force_search_web_first(user_text)
 
