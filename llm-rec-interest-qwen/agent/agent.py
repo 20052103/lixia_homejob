@@ -20,6 +20,7 @@ try:
         DEFAULT_TOP_P,
         GMAIL_CREDENTIALS_PATH,
         GMAIL_TOKEN_PATH,
+        USER_TIMEZONE,
     )
 except ImportError:
     from prompts import SYSTEM_PROMPT, ASSISTANT_STYLE, CHAT_SYSTEM_PROMPT
@@ -33,6 +34,7 @@ except ImportError:
         DEFAULT_TOP_P,
         GMAIL_CREDENTIALS_PATH,
         GMAIL_TOKEN_PATH,
+        USER_TIMEZONE,
     )
 
 
@@ -65,6 +67,9 @@ class LocalAgent:
 
         # Extra runtime system notes injected by run_agent.py / voice pipeline.
         self.extra_system_messages: List[str] = []
+
+        # Tracks the most recent user text for use in tool dispatch overrides
+        self._last_user_text: str = ""
 
         self.skills = {
             "chat": self.chat_simple,
@@ -277,6 +282,20 @@ class LocalAgent:
         if base_prompt == SYSTEM_PROMPT and ASSISTANT_STYLE.strip():
             parts.append(ASSISTANT_STYLE.strip())
 
+        # Inject current date/time in the user's local timezone so the LLM always knows "today"
+        if base_prompt == SYSTEM_PROMPT:
+            import datetime as _dt
+            try:
+                from zoneinfo import ZoneInfo
+                _tz = ZoneInfo(USER_TIMEZONE)
+                _now = _dt.datetime.now(_tz)
+                _tz_abbr = _now.strftime("%Z")
+            except Exception:
+                _now = _dt.datetime.now()
+                _tz_abbr = "local"
+            _dt_str = _now.strftime("%A, %B %d, %Y %I:%M %p").replace(" 0", " ") + f" {_tz_abbr}"
+            parts.append(f"Current date and time: {_dt_str}")
+
         # Inject VIP contacts so the LLM always knows real email addresses
         if base_prompt == SYSTEM_PROMPT:
             try:
@@ -423,14 +442,28 @@ class LocalAgent:
             return True
         return any(k in t for k in keywords)
 
+    def _needs_stock(self, text: str) -> bool:
+        """Check if stock market data is needed."""
+        t = (text or "").lower()
+        keywords = [
+            "stock", "stocks", "share price", "market cap",
+            "ticker", "nasdaq", "nyse", "s&p", "dow jones",
+            "price of", "how is", "how's",
+            "aapl", "msft", "tsla", "googl", "amzn", "nvda", "meta", "nflx",
+            "股票", "股价", "市值", "涨跌", "行情", "大盘",
+            "earnings", "pe ratio", "52 week",
+        ]
+        return any(k in t for k in keywords)
+
     def _needs_tool_search(self, text: str) -> bool:
-        """Check if tool use is needed (file ops, search, gmail, calendar, or drive)."""
+        """Check if tool use is needed (file ops, search, gmail, calendar, drive, or stock)."""
         return (
             self._needs_search(text)
             or self._needs_file_tools(text)
             or self._needs_gmail(text)
             or self._needs_calendar(text)
             or self._needs_drive(text)
+            or self._needs_stock(text)
         )
 
     def _needs_drive(self, text: str) -> bool:
@@ -773,8 +806,22 @@ class LocalAgent:
         if tool == "fetch_gmail":
             if not hasattr(self.sandbox, "fetch_gmail"):
                 return ToolResult(False, "fetch_gmail is not implemented in ToolSandbox.", {"tool": tool})
+            import datetime as _dt
+            from zoneinfo import ZoneInfo
+            query = str(args.get("query", "is:unread"))
+            _today_keywords = ["today", "今天", "今日"]
+            if any(k in self._last_user_text.lower() for k in _today_keywords):
+                try:
+                    local_today = _dt.datetime.now(ZoneInfo(USER_TIMEZONE)).date()
+                except Exception:
+                    local_today = _dt.date.today()
+                today_str = local_today.strftime("%Y/%m/%d")
+                query = re.sub(r"newer_than:\d+[dh]", f"after:{today_str}", query)
+                if "after:" not in query:
+                    query = f"after:{today_str} {query}".strip()
+                print(f"[fetch_gmail] 'today' query rewritten → {query!r} (timezone: {USER_TIMEZONE})")
             return self.sandbox.fetch_gmail(
-                query=str(args.get("query", "is:unread")),
+                query=query,
                 max_results=int(args.get("max_results", 10)),
                 include_body=bool(args.get("include_body", True)),
             )
@@ -815,6 +862,14 @@ class LocalAgent:
                 days=int(args.get("days", 150)),
             )
 
+        if tool == "fetch_stock":
+            if not hasattr(self.sandbox, "fetch_stock"):
+                return ToolResult(False, "fetch_stock is not implemented.", {"tool": tool})
+            return self.sandbox.fetch_stock(
+                tickers=str(args.get("tickers", "")),
+                include_news=bool(args.get("include_news", True)),
+            )
+
         return ToolResult(False, f"Unknown tool: {tool}", {"tool": tool})
 
     def _append_tool_result(self, tool_name: str, result: ToolResult) -> None:
@@ -843,6 +898,13 @@ class LocalAgent:
                 "CRITICAL: You MUST preserve every email's tag exactly as shown (e.g. [E1], [E2], [E3]) at the start of each email entry. "
                 "Never drop or omit these tags — the user needs them to reply (e.g. 'reply E1 with ...'). "
                 "Format each email as: [E1] From: ... | Subject: ... | <brief summary>"
+            )
+        if tool_name == "fetch_stock":
+            extra_instruction = (
+                "\n\nPresent the stock data clearly to the user. "
+                "Show price, change %, and key stats. Include news headlines with dates. "
+                "IMPORTANT: Always include the data source line exactly as shown (e.g. '[source: finnhub]') — the user wants to know where the data came from. "
+                "Ground your answer only in the TOOL_RESULT — do not add prices or facts from memory."
             )
         if tool_name == "send_gmail":
             if result.ok:
@@ -947,12 +1009,51 @@ class LocalAgent:
         if self.sandbox is None:
             return self.chat_simple(user_text)
 
+        self._last_user_text = user_text  # saved for use in _run_tool query overrides
+
         if any(k in user_text.lower() for k in ["repo", "project", "结构", "目录"]):
             forced = self.sandbox.list_dir(self.sandbox.allowed_roots[0])
             self._append_tool_result("list_dir", forced)
 
         self.messages.append({"role": "user", "content": user_text})
-        self._force_search_web_first(user_text)
+
+        # For stock queries: call fetch_stock immediately rather than letting
+        # the LLM fall back to search_web.
+        if self._needs_stock(user_text) and self.sandbox is not None:
+            import re as _re
+            # Company name → ticker map
+            _NAME_TO_TICKER = {
+                "apple": "AAPL", "microsoft": "MSFT", "tesla": "TSLA",
+                "google": "GOOGL", "alphabet": "GOOGL", "amazon": "AMZN",
+                "nvidia": "NVDA", "meta": "META", "facebook": "META",
+                "netflix": "NFLX", "amd": "AMD", "intel": "INTC",
+                "oracle": "ORCL", "salesforce": "CRM", "uber": "UBER",
+                "lyft": "LYFT", "shopify": "SHOP", "spotify": "SPOT",
+                "alibaba": "BABA", "tsmc": "TSM", "palantir": "PLTR",
+                "snowflake": "SNOW", "coinbase": "COIN", "airbnb": "ABNB",
+            }
+            _KNOWN_TICKERS = {"AAPL","MSFT","TSLA","GOOGL","GOOG","AMZN","NVDA","META",
+                              "NFLX","AMD","INTC","ORCL","CRM","UBER","LYFT","SHOP",
+                              "SPOT","BABA","TSM","PLTR","SNOW","COIN","ABNB","SPY","QQQ"}
+            t_lower = user_text.lower()
+            found = []
+            # 1. Match by company name
+            for name, ticker in _NAME_TO_TICKER.items():
+                if name in t_lower and ticker not in found:
+                    found.append(ticker)
+            # 2. Match explicit known tickers (ALL CAPS word match)
+            for ticker in _KNOWN_TICKERS:
+                if _re.search(rf'\b{ticker}\b', user_text.upper()) and ticker not in found:
+                    found.append(ticker)
+            if found:
+                result = self.sandbox.fetch_stock(
+                    tickers=",".join(found[:5]),
+                    include_news=True,
+                )
+                self._append_tool_result("fetch_stock", result)
+            # If no tickers recognised, let the LLM handle it with fetch_stock tool call
+        else:
+            self._force_search_web_first(user_text)
 
         final_answer = ""
 

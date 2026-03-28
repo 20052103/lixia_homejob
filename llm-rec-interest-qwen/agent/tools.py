@@ -491,6 +491,43 @@ class ToolSandbox:
             traceback.print_exc()
             return ToolResult(False, str(e), {"email_id": email_id})
 
+    # ----------------------------------------------------------
+    # Stock market tool
+    # ----------------------------------------------------------
+
+    def fetch_stock(
+        self,
+        tickers: str,
+        include_news: bool = True,
+    ) -> ToolResult:
+        """
+        Fetch near-realtime stock quote(s) and recent news.
+        tickers: comma-separated string, e.g. "AAPL,MSFT,TSLA"
+        """
+        try:
+            try:
+                from .stock_tool import fetch_stock_summary
+            except ImportError:
+                from stock_tool import fetch_stock_summary
+
+            ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+            if not ticker_list:
+                return ToolResult(False, "No tickers provided.", {"tickers": tickers})
+
+            print(f"[fetch_stock] tickers={ticker_list} include_news={include_news}")
+            try:
+                from .config import FINNHUB_API_KEY, POLYGON_API_KEY
+            except ImportError:
+                from config import FINNHUB_API_KEY, POLYGON_API_KEY
+            print(f"[fetch_stock] finnhub_key={'set' if FINNHUB_API_KEY else 'MISSING'} polygon_key={'set' if POLYGON_API_KEY else 'MISSING'}")
+            text = fetch_stock_summary(ticker_list, include_news=include_news)
+            return ToolResult(True, text, {"tickers": ticker_list})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {"tickers": tickers})
+
     def discover_vip_contacts(self, days: int = 150, auto_add: bool = True) -> ToolResult:
         """
         Scan the Sent box for the last `days` days, extract recipients and greeting names,

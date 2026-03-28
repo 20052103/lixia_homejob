@@ -2,6 +2,22 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+# Load .env before reading any env vars — works regardless of entry point
+_ENV_FILE = Path(__file__).parent.parent / ".env"
+if _ENV_FILE.exists():
+    try:
+        from dotenv import load_dotenv as _load_dotenv
+        _load_dotenv(_ENV_FILE, override=False)
+    except ImportError:
+        # dotenv not installed — parse manually
+        with open(_ENV_FILE, encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _, _v = _line.partition("=")
+                    os.environ.setdefault(_k.strip(), _v.strip())
 
 # ============================================================
 # LM Studio / OpenAI-compatible local endpoint
@@ -80,3 +96,15 @@ GDRIVE_TOKEN_PATH = os.getenv(
     "GDRIVE_TOKEN_PATH",
     os.path.join(_AGENT_DIR, "gdrive_token.json"),
 )
+
+# ============================================================
+# Stock market API keys
+# ============================================================
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "").strip()
+POLYGON_API_KEY = os.getenv("POLYGON_API_KEY", "").strip()
+
+# ============================================================
+# User timezone (for date-sensitive queries like "today's emails")
+# Use IANA timezone names: e.g. America/Los_Angeles, America/New_York, Asia/Shanghai
+# ============================================================
+USER_TIMEZONE = os.getenv("USER_TIMEZONE", "America/Los_Angeles").strip()

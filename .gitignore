@@ -57,3 +57,11 @@ llama/*.exp
 # =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# Gmail OAuth credentials
+# =========================
+credentials.json
+gmail_token.json
+gcal_token.json
+gdrive_token.json

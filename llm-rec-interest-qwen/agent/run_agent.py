@@ -2,6 +2,23 @@
 from __future__ import annotations
 
 import argparse
+import os
+from pathlib import Path
+
+# Load .env from the project root before importing config
+_ENV_FILE = Path(__file__).parent.parent / ".env"
+if _ENV_FILE.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_ENV_FILE)
+    except ImportError:
+        # dotenv not installed — parse manually
+        with open(_ENV_FILE, encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _, _v = _line.partition("=")
+                    os.environ.setdefault(_k.strip(), _v.strip())
 
 from agent.agent import AgentConfig, LocalAgent
 from agent.tools import ToolSandbox
