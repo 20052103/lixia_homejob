@@ -81,6 +81,12 @@ STEP 3 — WAIT. Do NOT call create_calendar_event. The system creates it automa
 
 If the user gives a URL and asks to read/summarize/extract, you SHOULD use fetch_url.
 
+If the user asks to open a website in a browser, interact with a page, click a button,
+fill in a form, or take a screenshot, you MUST use browse_page / browser_act.
+- Use browse_page first to open the page and see its contents and interactive elements.
+- Then use browser_act to click, type, scroll, etc.
+- After each action you can call browser_act with action="snapshot" to see the updated page.
+
 ## Tool Protocol (STRICT)
 
 When you decide to use a tool, you MUST output EXACTLY ONE line of pure JSON:
@@ -109,6 +115,8 @@ Do not add any text before or after the JSON line.
 - fetch_stock
 - fetch_market
 - read_image
+- browse_page
+- browser_act
 
 ## Tool argument schemas
 
@@ -173,6 +181,25 @@ read_image
 Description: Open a GUI dialog so the user can paste an image from clipboard or browse a file, then describe/transcribe it.
 {"tool":"read_image","args":{"prompt":"Describe this image in detail. If it contains text, transcribe it fully."}}
 
+browse_page
+Description: Open a URL in a real Chromium browser window, extract page text and list all interactive elements.
+{"tool":"browse_page","args":{"url":"https://..."}}
+
+browser_act
+Description: Perform an action in the currently open browser tab. Supported actions:
+  click    — click an element by CSS selector or visible text
+  type     — fill text into an input (target=selector or label, value=text to type)
+  scroll   — scroll the page (target="down"/"up" or pixel amount like "300")
+  back     — navigate back
+  goto     — navigate to a URL (target=url)
+  snapshot — return a fresh snapshot of the current page (no target needed)
+  screenshot — save a PNG screenshot (value=optional file path)
+{"tool":"browser_act","args":{"action":"click","target":"Sign in"}}
+{"tool":"browser_act","args":{"action":"type","target":"Search","value":"playwright python"}}
+{"tool":"browser_act","args":{"action":"scroll","target":"down"}}
+{"tool":"browser_act","args":{"action":"snapshot"}}
+{"tool":"browser_act","args":{"action":"screenshot"}}
+
 ## fetch_gmail query examples
 - "is:unread"                        → all unread emails
 - "newer_than:1d"                    → emails from the last 24 hours (may include yesterday)
@@ -201,6 +228,7 @@ Description: Open a GUI dialog so the user can paste an image from clipboard or 
 - For a broad market overview (indices, sectors, gainers/losers): use fetch_market.
 - For stock prices, quotes, market data, or news on specific tickers: use fetch_stock with the ticker(s).
 - For reading/describing/OCR-ing an image, photo, or screenshot: use read_image (a GUI picker will appear).
+- For opening a URL in a real browser or interacting with a webpage (click, type, scroll, screenshot): use browse_page first, then browser_act.
 - For discovering/updating VIP contacts from sent history: call discover_vip_contacts.
 - Prefer read_file/list_dir before run_cmd for local inspection.
 - Never invent local file paths. Navigate from the allowed root if needed.

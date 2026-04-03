@@ -981,6 +981,20 @@ class LocalAgent:
                 return ToolResult(False, "read_image is not implemented.", {"tool": tool})
             return self.sandbox.read_image(prompt=str(args.get("prompt", "Describe this image in detail.")))
 
+        if tool == "browse_page":
+            if not hasattr(self.sandbox, "browse_page"):
+                return ToolResult(False, "browse_page is not implemented.", {"tool": tool})
+            return self.sandbox.browse_page(url=str(args.get("url", "")))
+
+        if tool == "browser_act":
+            if not hasattr(self.sandbox, "browser_act"):
+                return ToolResult(False, "browser_act is not implemented.", {"tool": tool})
+            return self.sandbox.browser_act(
+                action=str(args.get("action", "")),
+                target=str(args.get("target", "")),
+                value=str(args.get("value", "")),
+            )
+
         return ToolResult(False, f"Unknown tool: {tool}", {"tool": tool})
 
     def _append_tool_result(self, tool_name: str, result: ToolResult) -> None:

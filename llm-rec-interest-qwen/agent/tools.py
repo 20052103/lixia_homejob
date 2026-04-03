@@ -210,6 +210,8 @@ class ToolSandbox:
         self.pending_cal_event: Optional[Dict[str, Any]] = None
         # Last Drive search results — list of DriveFile objects from most recent search_drive call
         self.last_drive_files: List[Any] = []
+        # Lazy-initialised Playwright browser session (None until first use)
+        self._browser_session = None
 
     # ----------------------------------------------------------
     # File tools
@@ -795,3 +797,67 @@ class ToolSandbox:
             import traceback
             traceback.print_exc()
             return ToolResult(False, f"❌ Drive read failed: {e}", {})
+    # ------------------------------------------------------------------
+    # Browser tools (Playwright)
+    # ------------------------------------------------------------------
+
+    def _get_browser_session(self):
+        """Return the shared BrowserSession, creating it on first use."""
+        if self._browser_session is None:
+            try:
+                from .browser_tool import BrowserSession
+            except ImportError:
+                from browser_tool import BrowserSession
+            self._browser_session = BrowserSession(headless=False)
+        return self._browser_session
+
+    def browse_page(self, url: str) -> "ToolResult":
+        """
+        Open *url* in a browser window, extract the page text and list all
+        interactive elements (links, buttons, inputs).
+        Returns a human-readable summary suitable for the LLM.
+        """
+        try:
+            session = self._get_browser_session()
+            print(f"[browse_page] url={url!r}")
+            snap = session.fetch_page(url)
+            return ToolResult(True, snap.summary(), {"url": snap.url, "title": snap.title})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {"url": url})
+
+    def browser_act(
+        self,
+        action: str,
+        target: str = "",
+        value: str = "",
+    ) -> "ToolResult":
+        """
+        Perform an action in the currently open browser tab.
+
+        action   target / value
+        -------- -------------------------------------------------------
+        click    CSS selector or visible text of the element to click
+        type     selector or text of input field  |  value = text to type
+        scroll   "up" / "down" / pixel amount (e.g. "300" or "-400")
+        back     –  (navigate back)
+        goto     URL to navigate to
+        snapshot –  (return a fresh page snapshot)
+        screenshot  optional file path for the PNG
+        """
+        try:
+            session = self._get_browser_session()
+            print(f"[browser_act] action={action!r} target={target!r} value={value!r}")
+            import json as _json
+            result = session.act(action=action, target=target, value=value)
+            if not result.get("ok"):
+                return ToolResult(False, result.get("error", "action failed"), result)
+            # For snapshot, the result already has a human-readable string
+            if "snapshot" in result:
+                return ToolResult(True, result["snapshot"], result)
+            return ToolResult(True, _json.dumps(result, ensure_ascii=False, indent=2), result)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return ToolResult(False, str(e), {"action": action})
